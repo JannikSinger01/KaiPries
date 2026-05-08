@@ -1,4 +1,28 @@
-<!DOCTYPE html>
+<!-- ... existing code ... -->
+        // 2. Add the Antique Base Map Layer
+        // We use the Digital Atlas of the Roman Empire (DARE)
+        L.tileLayer('https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png', {
+            maxZoom: 11,
+            attribution: 'Map data &copy; <a href="https://imperium.ahlfeldt.se/">Digital Atlas of the Roman Empire</a>, Johan Åhlfeldt'
+        }).addTo(map);
+
+        // 2.5 Lade die Provinzgrenzen aus der GeoJSON-Datei
+        // (Angepasster Pfad zum data-Ordner)
+        fetch('data/provinces.geojson')
+            .then(response => {
+                if (!response.ok) throw new Error('Provinz-Daten konnten nicht geladen werden.');
+                return response.json();
+            })
+            .then(data => {
+<!-- ... existing code ... -->
+```
+
+**Was Sie jetzt tun müssen:**
+Ersetzen Sie einfach diese Zeilen in Ihrer `index.html` auf GitHub (oder ändern Sie einfach das Wort `'provinces.geojson'` zu `'data/provinces.geojson'`). 
+
+Sobald Netlify das neu gebaut hat, sollten Sie über der farbigen Landschaftskarte nun auch die feinen gestrichelten Linien der antiken Provinzgrenzen sehen können.
+
+Lassen Sie mich wissen, ob die Linien jetzt auftauchen!<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
