@@ -143,6 +143,312 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        window.onload = function() {
+            // 1. Karte initialisieren
+            // Zentriert auf das antike Rom/Mittelmeer (Breitengrad, Längengrad)
+            const map = L.map('map', {
+                zoomControl: false // Wir setzen die Zoom-Kontrolle später nach unten rechts
+            }).setView([41.9028, 12.4964], 5);
+
+            // Zoom-Kontrolle unten rechts hinzufügen, damit sie nicht von der Sidebar verdeckt wird
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // 2. Hintergrund laden (Wechsel zu einer stabileren topografischen Karte)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // WICHTIG: Zwingt Leaflet, seine Größe nach dem Laden neu zu berechnen
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+
+            // 3. Provinzgrenzen laden (Ihre AWMC Datei)
+            const isPreviewEnv = window.location.protocol.startsWith('blob') || window.location.protocol === 'about:';
+            
+            if (!isPreviewEnv) {
+                // Läuft auf GitHub/Netlify ganz normal
+                fetch('data/provinces.geojson')
+                    .then(response => {
+                        if (!response.ok) {
+                            console.warn("Provinz-Datei nicht gefunden. Stellen Sie sicher, dass sie unter data/provinces.geojson liegt.");
+                            return null;
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if(data) {
+                            L.geoJSON(data, {
+                                style: {
+                                    color: "#8B4513", // Ein antikes Braun
+                                    weight: 1.5,
+                                    opacity: 0.6,
+                                    dashArray: "4 4", // Gestrichelte Linie
+                                    fillOpacity: 0    // Nur Umrisse
+                                }
+                            }).addTo(map);
+                        }
+                    })
+                    .catch(error => console.warn("Hinweis beim Laden der Grenzen:", error));
+            } else {
+                console.info("Im Preview-Modus wird 'data/provinces.geojson' übersprungen. Auf GitHub/Netlify funktioniert dieser Pfad!");
+            }
+
+            // 4. Testdaten: Kaiserpriesterinnen
+            const priestessData = {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": { "type": "Point", "coordinates": [27.1428, 38.4237] }, // Izmir/Smyrna
+                        "properties": {
+                            "name": "Iulia Rufina",
+                            "location": "Smyrna, Asia",
+                            "inscription": "Iuliae Rufinae, sacerdotiae Augustae...",
+                            "context": "Sie war eine bedeutende Priesterin des Kaiserkultes in Smyrna im 2. Jahrhundert n. Chr. und entstammte einer wohlhabenden lokalen Familie.",
+                            "image": "https://placehold.co/600x400/2c3e50/ecf0f1?text=Inschrift+Smyrna"
+                        }
+                    },
+                    {
+                        "type": "Feature",
+                        "geometry": { "type": "Point", "coordinates": [10.3233, 36.8065] }, // Tunis/Karthago
+                        "properties": {
+                            "name": "Flavia Tertulla",
+                            "location": "Carthago, Africa Proconsularis",
+                            "inscription": "Flaviae Tertullae flaminicae Augustae...",
+                            "context": "Flaminica provinciae Africae. Sie stiftete ein Gebäude für die lokalen Festspiele des Kaiserkults.",
+                            "image": "https://placehold.co/600x400/8B4513/f8f9fa?text=Inschrift+Karthago"
+                        }
+                    },
+                    {
+                        "type": "Feature",
+                        "geometry": { "type": "Point", "coordinates": [1.1496, 41.1189] }, // Tarragona/Tarraco
+                        "properties": {
+                            "name": "Valeria Maxima",
+                            "location": "Tarraco, Hispania Tarraconensis",
+                            "inscription": "Valeria Maxima, flaminica provinciae...",
+                            "context": "Vertrat die Provinz auf dem Provinziallandtag in Tarraco. Die Statue wurde ihr von der Stadt für ihre Freigiebigkeit errichtet.",
+                            "image": null // Beispiel ohne Bild
+                        }
+                    }
+                ]
+            };
+
+            // Stil für die Stecknadeln
+            const markerStyle = {
+                radius: 8,
+                fillColor: "#991b1b", // Dunkelrot
+                color: "#ffffff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            };
+
+            // Marker auf die Karte setzen
+            L.geoJSON(priestessData, {
+                pointToLayer: function (feature, latlng) {
+                    return L.circleMarker(latlng, markerStyle);
+                },
+                onEachFeature: function (feature, layer) {
+                    // Tooltip (erscheint beim Hover)
+                    layer.bindTooltip(`<span class="font-cinzel font-bold">${feature.properties.name}</span>`);
+                    
+                    // Klick-Event öffnet die Sidebar
+                    layer.on('click', function() {
+                        openSidebar(feature.properties);
+                    });
+                }
+            }).addTo(map);
+
+            // 5. Sidebar Logik
+            const sidebar = document.getElementById('sidebar');
+            const closeBtn = document.getElementById('close-btn');
+
+            // Funktion zum Befüllen und Öffnen der Sidebar
+            function openSidebar(props) {
+                // Texte einsetzen
+                document.getElementById('detail-name').innerText = props.name;
+                document.getElementById('detail-location-text').innerText = props.location;
+                document.getElementById('detail-inscription').innerText = props.inscription;
+                document.getElementById('detail-context').innerText = props.context;
+
+                // Bild einsetzen oder Platzhalter zeigen
+                const imgElement = document.getElementById('detail-image');
+                const placeholder = document.getElementById('detail-image-placeholder');
+                
+                if (props.image) {
+                    imgElement.src = props.image;
+                    imgElement.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                } else {
+                    imgElement.src = '';
+                    imgElement.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                }
+
+                // Sidebar einblenden
+                sidebar.classList.add('open');
+            }
+
+            // Schließen-Button
+            closeBtn.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+            });
+
+            // Klick auf die Karte schließt die Sidebar ebenfalls
+            map.on('click', () => {
+                sidebar.classList.remove('open');
+            });
+        }; // Ende window.onload
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KaiPries Explorer</title>
+    
+    <!-- Google Fonts: Cinzel für den römischen Flair, Inter für gut lesbaren Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS für die Karte -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Tailwind CSS für modernes Styling (wird per CDN geladen) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Verhindert horizontales Scrollen und macht die App bildschirmfüllend */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Die Karte nimmt den gesamten Hintergrund ein */
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Die Box oben links mit dem Titel */
+        #title-card {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 40;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Die Sidebar ist absolut positioniert und schiebt sich über die Karte */
+        #sidebar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 400px;
+            max-width: 100vw; /* Wichtig für Mobilgeräte */
+            height: 100vh;
+            background-color: #fafafa;
+            z-index: 50;
+            transform: translateX(100%); /* Startet außerhalb des sichtbaren Bereichs */
+            transition: transform 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+        }
+
+        /* Diese Klasse wird per JavaScript hinzugefügt, um die Sidebar anzuzeigen */
+        #sidebar.open {
+            transform: translateX(0);
+        }
+
+        /* Eigener Scrollbereich für den Inhalt der Sidebar */
+        #sidebar-content {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Container für die Leaflet Karte -->
+    <div id="map"></div>
+
+    <!-- Titel / Logo oben links -->
+    <div id="title-card" class="bg-white/90 backdrop-blur-md p-4 rounded-lg border-l-4 border-red-800">
+        <h1 class="text-3xl font-cinzel font-bold text-gray-900 tracking-wider">KAIPRIES</h1>
+        <p class="text-sm text-gray-600">Kaiserpriesterinnen im antiken Rom</p>
+    </div>
+
+    <!-- Seitenleiste für Details -->
+    <div id="sidebar">
+        <!-- Header der Sidebar -->
+        <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-white">
+            <h2 class="text-xl font-cinzel font-bold text-red-800">Details</h2>
+            <button id="close-btn" class="text-gray-500 hover:text-gray-800 focus:outline-none p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <!-- SVG Icon für das 'X' (Schließen) -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Scrollbarer Inhaltsbereich der Sidebar -->
+        <div id="sidebar-content" class="p-0">
+            <!-- Platzhalter für das Epigraphen-Bild -->
+            <div id="detail-image-container" class="w-full h-64 bg-gray-200 flex items-center justify-center overflow-hidden">
+                <img id="detail-image" src="" alt="Epigraph" class="w-full h-full object-cover hidden">
+                <span id="detail-image-placeholder" class="text-gray-400 text-sm font-cinzel">Kein Bild verfügbar</span>
+            </div>
+
+            <!-- Textliche Details -->
+            <div class="p-6 space-y-6">
+                <div>
+                    <span class="inline-block bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded font-semibold uppercase tracking-wide mb-2">Priesterin</span>
+                    <h3 id="detail-name" class="text-2xl font-cinzel font-bold text-gray-900">Name laden...</h3>
+                    <p id="detail-location" class="text-sm text-gray-500 mt-1 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span id="detail-location-text">Fundort laden...</span>
+                    </p>
+                </div>
+
+                <div>
+                    <h4 class="font-cinzel font-bold text-gray-900 border-b border-gray-200 pb-1 mb-3">Transkription / Epigraph</h4>
+                    <div class="bg-gray-50 p-4 rounded-md border border-gray-100">
+                        <p id="detail-inscription" class="text-gray-700 italic font-serif">Lade Text...</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-cinzel font-bold text-gray-900 border-b border-gray-200 pb-1 mb-3">Historischer Kontext</h4>
+                    <p id="detail-context" class="text-gray-700 leading-relaxed text-sm">Lade Beschreibung...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS Library -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
         // 1. Karte initialisieren
         // Zentriert auf das antike Rom/Mittelmeer (Breitengrad, Längengrad)
         const map = L.map('map', {
