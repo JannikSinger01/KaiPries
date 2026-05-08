@@ -2,6 +2,330 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaiPries - Kaiserpriesterinnen der Römischen Antike</title>
+    
+    <!-- Tailwind CSS für modernes, responsives Design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet CSS für die Karte -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Tailwind Konfiguration für ein historisches "Feel" -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'roman-red': '#8B0000',
+                        'parchment': '#fdfbf7',
+                        'parchment-dark': '#f0eae0',
+                        'stone-dark': '#2c2925'
+                    },
+                    fontFamily: {
+                        'serif': ['"Merriweather"', 'Georgia', 'serif'],
+                        'sans': ['"Inter"', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Grundlegendes Layout */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #fdfbf7;
+        }
+
+        /* Karten-Container muss eine definierte Höhe haben */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Eigener Scrollbar für die Text-Spalte */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f0eae0;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #8B0000;
+            border-radius: 20px;
+        }
+
+        /* Anpassung der Leaflet Popups passend zum Design */
+        .leaflet-popup-content-wrapper {
+            background-color: #fdfbf7;
+            color: #2c2925;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+        }
+        .leaflet-popup-tip {
+            background-color: #fdfbf7;
+        }
+        .leaflet-popup-content {
+            font-family: '"Inter"', system-ui, sans-serif;
+            margin: 14px 16px;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col md:flex-row h-screen font-serif text-stone-dark overflow-hidden">
+
+    <!-- LINKE SEITENLEISTE (Text & Inschriften) -->
+    <aside class="w-full md:w-1/3 lg:w-1/4 h-1/2 md:h-full bg-parchment shadow-2xl z-20 flex flex-col border-b md:border-b-0 md:border-r border-stone-300">
+        
+        <!-- Header -->
+        <header class="p-6 bg-roman-red text-white">
+            <h1 class="text-2xl font-bold tracking-wide">KaiPries</h1>
+            <h2 class="text-sm font-sans font-light opacity-90 mt-1">Kaiserpriesterinnen der Antike</h2>
+            <p class="text-xs font-sans mt-2 opacity-75">Universität Osnabrück</p>
+        </header>
+
+        <!-- Main Content Area (Scrollable) -->
+        <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            
+            <!-- Standard-Text (sichtbar wenn nichts ausgewählt ist) -->
+            <div id="intro-text" class="transition-opacity duration-300">
+                <p class="mb-4 leading-relaxed text-sm">
+                    Willkommen bei der interaktiven Karte des Projekts <strong>KaiPries</strong>. 
+                    Diese Applikation visualisiert das Aufkommen und die geographische Verteilung von Kaiserpriesterinnen im Imperium Romanum.
+                </p>
+                <p class="mb-4 leading-relaxed text-sm">
+                    Die Karte zeigt die Grenzen des Römischen Reiches um 117 n. Chr. (AWMC). 
+                    <strong>Klicke auf eine der Stecknadeln</strong> auf der Karte, um die epigraphischen Zeugnisse der jeweiligen Priesterin zu laden.
+                </p>
+                <div class="mt-6 p-4 bg-parchment-dark rounded-lg border border-stone-300 text-center font-sans text-sm text-stone-600">
+                    Wähle einen Standort auf der Karte aus.
+                </div>
+            </div>
+
+            <!-- Detail-Ansicht für Epigraphen (wird dynamisch per JS eingeblendet) -->
+            <div id="epigraph-details" class="hidden animate-fade-in">
+                <button id="btn-back" class="mb-4 text-xs font-sans text-roman-red hover:underline flex items-center gap-1">
+                    ← Zurück zur Übersicht
+                </button>
+                
+                <h3 id="detail-name" class="text-xl font-bold text-roman-red mb-1">Name der Priesterin</h3>
+                <p id="detail-location" class="text-sm italic font-sans text-stone-600 mb-6">Ort, Provinz • Datierung</p>
+                
+                <div class="mb-6">
+                    <h4 class="text-xs font-bold font-sans tracking-wider uppercase text-stone-500 mb-2 border-b border-stone-300 pb-1">Inschrift (Transkription / Übersetzung)</h4>
+                    <blockquote id="detail-text" class="pl-4 border-l-4 border-roman-red text-sm leading-relaxed italic bg-parchment-dark p-3 rounded-r">
+                        "Die epigraphische Inschrift wird hier angezeigt..."
+                    </blockquote>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold font-sans tracking-wider uppercase text-stone-500 mb-2 border-b border-stone-300 pb-1">Kontext & Anmerkungen</h4>
+                    <p id="detail-context" class="text-sm leading-relaxed">
+                        Zusätzlicher Text, Erklärungen zum Fundort, zur Bedeutung der Priesterin und zum Kult in dieser Region.
+                    </p>
+                </div>
+                
+                <div class="mt-8 text-xs font-sans text-stone-400">
+                    Referenz: <span id="detail-ref">CIL 00, 0000</span>
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- RECHTE SEITE (Leaflet Karte) -->
+    <main class="w-full md:w-2/3 lg:w-3/4 h-1/2 md:h-full relative">
+        <div id="map"></div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        // 1. KARTEN-INITIALISIERUNG
+        // Zentrale Ausrichtung auf den Mittelmeerraum (Rom / Griechenland / Kleinasien)
+        const map = L.map('map', {
+            center: [38.5, 20.0], // Koordinaten [Breitengrad, Längengrad]
+            zoom: 5,
+            minZoom: 3,
+            maxZoom: 12
+        });
+
+        // Hinzufügen einer eleganten, zurückhaltenden Hintergrundkarte (Basemap)
+        // Positron von CartoDB eignet sich hervorragend für historische Overlays
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | Map data: AWMC',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // 2. GEOJSON LADEN (Provinzen)
+        // Hier simulieren wir den Zugriff auf deine 'data/provinces.geojson'
+        fetch('data/provinces.geojson')
+            .then(response => {
+                if (!response.ok) throw new Error("GeoJSON Datei nicht gefunden.");
+                return response.json();
+            })
+            .then(data => {
+                // GeoJSON zur Karte hinzufügen mit spezifischem Styling
+                L.geoJSON(data, {
+                    style: function (feature) {
+                        return {
+                            color: "#8B0000",   // Grenzlinien in Rot
+                            weight: 1,          // Liniendicke
+                            opacity: 0.3,       // Transparenz der Linien
+                            fillColor: "#eab308", // Füllfarbe der Provinzen
+                            fillOpacity: 0.05   // Sehr leicht transparent gefüllt
+                        };
+                    }
+                }).addTo(map);
+            })
+            .catch(error => {
+                // Fallback / Fehlerbehandlung für diese Vorschau-Umgebung
+                console.info("Hinweis: data/provinces.geojson konnte in der Vorschau nicht geladen werden. Die Karte funktioniert aber weiterhin. Fehler: " + error.message);
+                
+                // Für diese Demo lade ich ein Dummy-Rechteck, damit du siehst, wie ein GeoJSON aussehen würde
+                const dummyGeoJSON = {
+                    "type": "FeatureCollection",
+                    "features": [{
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [[[10, 35], [30, 35], [30, 45], [10, 45], [10, 35]]]
+                        },
+                        "properties": {"name": "Demonstrations-Bereich"}
+                    }]
+                };
+                L.geoJSON(dummyGeoJSON, {
+                    style: { color: "#8B0000", weight: 2, fillOpacity: 0.0, dashArray: "5, 5" }
+                }).addTo(map);
+            });
+
+        // 3. DATEN FÜR DIE STECKNADELN (Kaiserpriesterinnen)
+        // Dies ist ein Array mit Dummy-Daten. Du kannst dieses später durch eine JSON-Datei 
+        // oder eine Datenbankabfrage ersetzen.
+        const epigraphData = [
+            {
+                id: 1,
+                name: "Flavia Vibia Sabina",
+                locationName: "Ephesos, Asia",
+                date: "ca. 120-130 n. Chr.",
+                lat: 37.9398, 
+                lng: 27.3406,
+                shortText: "Ehreninschrift für die Oberpriesterin",
+                epigraph: "Der Rat und das Volk von Ephesos ehren Flavia Vibia Sabina, herausragende Oberpriesterin von Asia und Wohltäterin der Stadt...",
+                context: "Flavia Vibia Sabina stammte aus einer sehr einflussreichen Familie. Das Amt der Archiereia (Oberpriesterin) des Kaiserkultes in der Provinz Asia war eines der prestigeträchtigsten Ämter, die eine Frau im Osten des Römischen Reiches bekleiden konnte. Sie stiftete wahrscheinlich Bauten oder richtete Spiele aus.",
+                reference: "IEph 1004"
+            },
+            {
+                id: 2,
+                name: "Iulia Agrippina",
+                locationName: "Lugdunum (Lyon), Gallia Lugdunensis",
+                date: "ca. 40 n. Chr.",
+                lat: 45.7640, 
+                lng: 4.8357,
+                shortText: "Widmung am Altar der Roma und des Augustus",
+                epigraph: "[Rekonstruierter Text] ...für das Wohl des Kaisers, geweiht von den Priesterinnen...",
+                context: "Lugdunum war das Zentrum des Kaiserkultes für die drei gallischen Provinzen. Während Frauen oft als Flaminicae (Priesterinnen) der vergöttlichten Kaiserinnen (Divae) auftraten, zeigt die Epigraphik hier eine komplexe Verflechtung lokaler gallischer Eliten mit römischen Herrschaftsstrukturen.",
+                reference: "CIL XIII, 1668"
+            },
+            {
+                id: 3,
+                name: "Memmia Iuliana",
+                locationName: "Aphrodisias, Caria",
+                date: "spätes 2. Jh. n. Chr.",
+                lat: 37.7088, 
+                lng: 28.7236,
+                shortText: "Statubenbasis einer Archiereia",
+                epigraph: "Die Stadt ehrt Memmia Iuliana, Archiereia der Kaiser, Tochter von Memmius, wegen ihrer außerordentlichen Tugend und Freigebigkeit...",
+                context: "In Aphrodisias ist das Sebasteion (Kaiserkult-Tempel) ein prominentes archäologisches Zeugnis. Frauen aus der städtischen Elite spielten eine zentrale Rolle bei der Finanzierung von Festen, was ihnen enorme gesellschaftliche Sichtbarkeit verschaffte.",
+                reference: "IAph2007 12-509"
+            },
+            {
+                id: 4,
+                name: "Anonyme Flaminica",
+                locationName: "Tarraco (Tarragona), Hispania Tarraconensis",
+                date: "1. Jh. n. Chr.",
+                lat: 41.1189, 
+                lng: 1.2445,
+                shortText: "Fragment einer Priesterin der Diva Augusta",
+                epigraph: "... Flaminica provinciae Hispaniae citerioris ...",
+                context: "Das Amt der Provinzialpriesterin (Flaminica) in Tarraco war oft Ehefrauen der Provinzialpriester (Flamen) vorbehalten, doch agierten sie vielfach als eigenständige Stifterinnen. Der Kult richtete sich hier oft speziell an Diva Augusta (Livia).",
+                reference: "RIT 288"
+            }
+        ];
+
+        // 4. MARKER AUF DER KARTE PLATZIEREN
+        
+        // HTML-Elemente der Sidebar referenzieren
+        const introTextDiv = document.getElementById('intro-text');
+        const detailsDiv = document.getElementById('epigraph-details');
+        const btnBack = document.getElementById('btn-back');
+
+        // Funktion zum Aktualisieren der Seitenleiste
+        function showDetails(data) {
+            // Inhalte austauschen
+            document.getElementById('detail-name').innerText = data.name;
+            document.getElementById('detail-location').innerText = `${data.locationName} • ${data.date}`;
+            document.getElementById('detail-text').innerText = data.epigraph;
+            document.getElementById('detail-context').innerText = data.context;
+            document.getElementById('detail-ref').innerText = data.reference;
+
+            // Ansicht wechseln
+            introTextDiv.classList.add('hidden');
+            detailsDiv.classList.remove('hidden');
+        }
+
+        // Event Listener für den "Zurück"-Button
+        btnBack.addEventListener('click', () => {
+            detailsDiv.classList.add('hidden');
+            introTextDiv.classList.remove('hidden');
+            // Karte wieder auf den ursprünglichen Zustand zentrieren
+            map.setView([38.5, 20.0], 5);
+        });
+
+        // Schleife durch die Daten, um Marker zu erstellen
+        epigraphData.forEach(item => {
+            // Marker erstellen (Wir können hier auch Custom Icons für antike Säulen o.ä. verwenden)
+            const marker = L.marker([item.lat, item.lng]).addTo(map);
+            
+            // Tooltip (erscheint beim Hovern)
+            marker.bindTooltip(`<strong>${item.name}</strong><br>${item.locationName}`, {
+                direction: 'top',
+                className: 'font-sans text-sm'
+            });
+
+            // Klick-Ereignis für den Marker
+            marker.on('click', () => {
+                // Karte auf den Marker zentrieren und leicht heranzoomen
+                map.flyTo([item.lat, item.lng], 8, {
+                    duration: 1.5 // Weiche Animation
+                });
+                
+                // Sidebar aktualisieren
+                showDetails(item);
+            });
+        });
+
+        // Zusätzlicher CSS Code für eine weiche Einblend-Animation in Tailwind
+        tailwind.config.theme.extend.animation = {
+            'fade-in': 'fadeIn 0.5s ease-out'
+        };
+        tailwind.config.theme.extend.keyframes = {
+            fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+        };
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KaiPries Explorer</title>
     
