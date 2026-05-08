@@ -149,8 +149,31 @@
             minZoom: 3
         }).addTo(map);
 
-        // HIER KOMMT SPÄTER DEINE PROVINCES.GEOJSON REIN
-        // Für den Moment simulieren wir ein paar Priesterinnen-Daten
+        // 3. AWMC GeoJSON (Grenzen 117 n. Chr.) laden und als Layer hinzufügen
+        fetch('data/provinces.geojson')
+            .then(response => {
+                if (!response.ok) throw new Error("GeoJSON Datei konnte nicht gefunden werden.");
+                return response.json();
+            })
+            .then(geojsonData => {
+                // GeoJSON-Daten auf die Karte zeichnen
+                L.geoJSON(geojsonData, {
+                    style: function (feature) {
+                        return {
+                            color: '#8B0000',       // Römisch-Rot für die Grenzlinien
+                            weight: 1.5,            // Liniendicke
+                            opacity: 0.6,           // Leicht transparent
+                            fillColor: '#d4c4a8',   // Antiker Pergament-Ton für die Füllung
+                            fillOpacity: 0.15       // Sehr leicht gefüllt, damit die Basemap sichtbar bleibt
+                        };
+                    }
+                }).addTo(map);
+            })
+            .catch(error => {
+                console.warn("Hinweis zur lokalen Entwicklung: GeoJSON konnte nicht geladen werden.", error);
+            });
+
+        // 4. Priesterinnen-Daten (vorerst simulierte Beispieldaten)
         const priestesses = [
             {
                 lat: 41.9028, lng: 12.4964, // Rom
