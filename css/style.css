@@ -1,0 +1,43 @@
+<style>
+        /* Grundlegendes Layout */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #fdfbf7;
+        }
+
+        /* Karten-Container muss eine definierte Höhe haben */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Eigener Scrollbar für die Text-Spalte */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f0eae0;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #8B0000;
+            border-radius: 20px;
+        }
+
+        /* Anpassung der Leaflet Popups passend zum Design */
+        .leaflet-popup-content-wrapper {
+            background-color: #fdfbf7;
+            color: #2c2925;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+        }
+        .leaflet-popup-tip {
+            background-color: #fdfbf7;
+        }
+        .leaflet-popup-content {
+            font-family: '"Inter"', system-ui, sans-serif;
+            margin: 14px 16px;
+        }
+    </style>
