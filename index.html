@@ -73,6 +73,356 @@
             background-color: var(--bg-color);
             box-shadow: -2px 0 10px rgba(0,0,0,0.1);
             position: absolute;
+            right: 0;
+            transform: translateX(100%); /* Versteckt rechts außerhalb des Bildschirms */
+            top: 0;
+            transition: transform 0.3s ease;
+            z-index: 9999; /* Garantiert immer über der Leaflet-Karte */
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar.active {
+            transform: translateX(0); /* Ins Bild schieben */
+        }
+
+        /* Header der Seitenleiste */
+        .sidebar-header {
+            padding: 20px;
+            background-color: white;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            text-transform: uppercase;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        /* Inhalt der Seitenleiste */
+        .sidebar-content {
+            padding: 25px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        /* Bild in der Seitenleiste */
+        .detail-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none; /* Wird nur eingeblendet, wenn ein Bild vorhanden ist */
+        }
+
+        /* Spezifische Datenfelder */
+        .data-group {
+            margin-bottom: 20px;
+        }
+
+        .data-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #777;
+            margin-bottom: 5px;
+            display: block;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+
+        .data-value {
+            font-size: 1.05rem;
+            line-height: 1.5;
+        }
+
+        .epigraph-text {
+            font-family: 'Courier New', Courier, monospace; /* Monospace für Transkriptionen */
+            background-color: rgba(255,255,255,0.6);
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 3px solid var(--primary-color);
+            white-space: pre-wrap; /* Erhält Zeilenumbrüche */
+            font-size: 0.95rem;
+        }
+
+        .placeholder-text {
+            padding: 25px;
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Titel Overlay auf der Karte -->
+    <div class="title-box">
+        <h1>KaiPries</h1>
+        <p>Kaiserpriesterinnen im antiken Rom</p>
+    </div>
+
+    <!-- Karten-Container -->
+    <div id="map"></div>
+
+    <!-- Seitenleiste für Details -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2 id="detail-name">Name der Priesterin</h2>
+            <button class="close-btn" onclick="closeSidebar()">&times;</button>
+        </div>
+        
+        <div class="sidebar-content" id="sidebar-data" style="display: none;">
+            
+            <!-- Platzhalter für das Bild -->
+            <img id="detail-bild" class="detail-image" src="" alt="Bild der Inschrift / Fundstelle">
+
+            <div class="data-group">
+                <span class="data-label">Fundort</span>
+                <div class="data-value" id="detail-fundort">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Datierung</span>
+                <div class="data-value" id="detail-datierung">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Priesterinnentitel</span>
+                <div class="data-value" id="detail-titel" style="font-weight: bold; color: var(--primary-color);">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Familie</span>
+                <div class="data-value" id="detail-familie">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Inschriftentext</span>
+                <div class="data-value epigraph-text" id="detail-text">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Belegstelle</span>
+                <div class="data-value" id="detail-belegstelle">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Inschriften Art</span>
+                <div class="data-value" id="detail-art">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Anmerkung</span>
+                <div class="data-value" id="detail-anmerkung">-</div>
+            </div>
+
+            <div class="data-group">
+                <span class="data-label">Literatur</span>
+                <div class="data-value" id="detail-literatur">-</div>
+            </div>
+
+        </div>
+        
+        <!-- Wird angezeigt, wenn kein Marker geklickt ist -->
+        <div class="placeholder-text" id="sidebar-placeholder">
+            Klicke auf eine Stecknadel auf der Karte, um die epigraphischen Daten auszuwerten.
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // 1. Karte initialisieren (Zentrum auf das Mittelmeer, Zoom 5)
+        const map = L.map('map').setView([41.9, 12.5], 5);
+
+        // 2. Hintergrundkarte laden (CartoDB Positron ohne Labels für einen sauberen Look)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 10
+        }).addTo(map);
+
+        // 3. AWMC Römische Grenzen (aus lokalem Ordner) laden
+        fetch('data/provinces.geojson')
+            .then(response => {
+                if(!response.ok) throw new Error("GeoJSON Datei nicht gefunden. Läuft die App auf einem lokalen Server?");
+                return response.json();
+            })
+            .then(data => {
+                L.geoJSON(data, {
+                    style: {
+                        color: "#8b0000",       // Roter Rand für die römischen Grenzen
+                        weight: 1.5,            // Dicke der Linie
+                        fillColor: "#e6e1d1",   // Antiker Pergament-Ton als Füllung
+                        fillOpacity: 0.4        // Leicht transparent
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.warn("Hinweis (kann ignoriert werden, falls die Datei fehlt):", error));
+
+        // 4. Eigene Priesterinnen-Daten (JSON) laden und auf der Karte anzeigen
+        fetch('data/priesterinnen.json')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(priesterin => {
+                    // Prüfen ob gültige Koordinaten vorhanden sind
+                    if (priesterin.Koordinaten && priesterin.Koordinaten.length === 2) {
+                        
+                        // Roten Kreis-Marker erstellen
+                        const marker = L.circleMarker(priesterin.Koordinaten, {
+                            radius: 8,
+                            fillColor: "#8b0000",
+                            color: "#ffffff",
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map);
+
+                        // Tooltip (erscheint beim Hover)
+                        marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
+
+                        // Event-Listener: Was passiert beim Anklicken?
+                        marker.on('click', () => {
+                            console.log("Stecknadel angeklickt. Übergebene Daten:", priesterin);
+                            try {
+                                showDetails(priesterin);
+                            } catch (e) {
+                                console.error("Skript-Fehler beim Laden der Details:", e);
+                            }
+                        });
+                    }
+                });
+            })
+            .catch(error => console.warn("Fehler beim Laden der Priesterinnen-Daten:", error));
+
+        // --- UI FUNKTIONEN ---
+
+        function showDetails(data) {
+            // Platzhalter ausblenden, Datenbereich einblenden
+            document.getElementById('sidebar-placeholder').style.display = 'none';
+            document.getElementById('sidebar-data').style.display = 'block';
+
+            // HTML Felder mit den Daten aus der JSON füllen
+            document.getElementById('detail-name').innerText = data.Name || 'Unbekannt';
+            document.getElementById('detail-fundort').innerText = data.Fundort || '-';
+            document.getElementById('detail-datierung').innerText = data.Datierung || 'Unbekannt';
+            document.getElementById('detail-titel').innerText = data.Priesterinnentitel || '-';
+            document.getElementById('detail-familie').innerText = data.Familie || '-';
+            document.getElementById('detail-text').innerText = data.Inschriftentext || 'Kein Text vorhanden';
+            document.getElementById('detail-belegstelle').innerText = data.Belegstelle || '-';
+            document.getElementById('detail-art').innerText = data.Inschriften_Art || '-';
+            document.getElementById('detail-anmerkung').innerText = data.Anmerkung || '-';
+            document.getElementById('detail-literatur').innerText = data.Literatur || '-';
+
+            // Bild laden, robuster Check
+            const imgElement = document.getElementById('detail-bild');
+            if (data.Bild && typeof data.Bild === 'string' && data.Bild.trim() !== "") {
+                imgElement.src = data.Bild;
+                imgElement.style.display = 'block';
+            } else {
+                imgElement.src = "";
+                imgElement.style.display = 'none';
+            }
+
+            // Seitenleiste hereinfahren
+            document.getElementById('sidebar').classList.add('active');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('active');
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaiPries - Kaiserpriesterinnen im antiken Rom</title>
+    
+    <!-- Leaflet CSS für die Karte -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --primary-color: #8b0000; /* Dunkles "Pompeji"-Rot */
+            --bg-color: #f4f1ea; /* Heller Pergament-Ton */
+            --text-color: #2c2c2c;
+            --sidebar-width: 400px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Georgia', serif; /* Serifenschrift für antiken Charakter */
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+        }
+
+        /* --- KARTE --- */
+        #map {
+            flex-grow: 1;
+            height: 100%;
+            background-color: #a8b8a5; /* Gedämpftes Grün-Blau für das Meer/Hintergrund */
+            z-index: 1;
+        }
+
+        /* --- TITLE BOX OVERLAY --- */
+        .title-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000; /* Über der Karte */
+            border-top: 4px solid var(--primary-color);
+        }
+
+        .title-box h1 {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .title-box p {
+            font-size: 0.9rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* --- SEITENLEISTE (SIDEBAR) --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            height: 100%;
+            background-color: var(--bg-color);
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            position: absolute;
             right: -100%; /* Versteckt außerhalb des Bildschirms */
             top: 0;
             transition: right 0.3s ease;
