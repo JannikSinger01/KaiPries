@@ -4,6 +4,290 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KaiPries - Kaiserpriesterinnen im antiken Rom</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --primary-color: #8b0000;
+            --bg-color: #f4f1ea;
+            --text-color: #2c2c2c;
+            --sidebar-width: 400px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+        }
+
+        /* Robuster Container für korrektes Stacking (Überlagerung) */
+        #app-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0; 
+            left: 0;
+            width: 100%; 
+            height: 100%;
+            background-color: #a8b8a5;
+            z-index: 1;
+        }
+
+        .title-box {
+            position: absolute;
+            top: 20px; 
+            left: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            border-top: 4px solid var(--primary-color);
+        }
+
+        .title-box h1 {
+            font-size: 1.5rem; 
+            color: var(--primary-color);
+            margin-bottom: 5px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+
+        .title-box p {
+            font-size: 0.9rem; 
+            color: #666; 
+            font-style: italic;
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            height: 100%;
+            background-color: var(--bg-color);
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            position: absolute;
+            right: 0;
+            transform: translateX(100%);
+            top: 0;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar.active {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 20px; 
+            background-color: white;
+            border-bottom: 1px solid #ddd; 
+            display: flex;
+            justify-content: space-between; 
+            align-items: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.2rem; 
+            color: var(--primary-color); 
+            text-transform: uppercase;
+        }
+
+        .close-btn {
+            background: none; 
+            border: none; 
+            font-size: 1.5rem; 
+            cursor: pointer; 
+            color: #666;
+        }
+
+        .sidebar-content {
+            padding: 25px; 
+            overflow-y: auto; 
+            flex-grow: 1;
+        }
+
+        .detail-image {
+            max-width: 100%; 
+            height: auto; 
+            border-radius: 4px;
+            margin-bottom: 20px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .data-group {
+            margin-bottom: 20px;
+        }
+
+        .data-label {
+            font-size: 0.8rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            color: #777; 
+            margin-bottom: 5px; 
+            display: block;
+            border-bottom: 1px solid #ddd; 
+            padding-bottom: 3px;
+        }
+
+        .data-value {
+            font-size: 1.05rem; 
+            line-height: 1.5;
+        }
+
+        .epigraph-text {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: rgba(255,255,255,0.6); 
+            padding: 15px;
+            border-radius: 4px; 
+            border-left: 3px solid var(--primary-color);
+            white-space: pre-wrap; 
+            font-size: 0.95rem;
+        }
+
+        .placeholder-text {
+            padding: 25px; 
+            color: #666; 
+            font-style: italic; 
+            text-align: center; 
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- Titel -->
+        <div class="title-box">
+            <h1>KaiPries</h1>
+            <p>Kaiserpriesterinnen im antiken Rom</p>
+        </div>
+
+        <!-- Karte -->
+        <div id="map"></div>
+
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <h2 id="detail-name">Name der Priesterin</h2>
+                <button class="close-btn" onclick="closeSidebar()">&times;</button>
+            </div>
+            
+            <div class="sidebar-content" id="sidebar-data" style="display: none;">
+                <img id="detail-bild" class="detail-image" src="" alt="Bild der Inschrift">
+
+                <div class="data-group"><span class="data-label">Fundort</span><div class="data-value" id="detail-fundort">-</div></div>
+                <div class="data-group"><span class="data-label">Datierung</span><div class="data-value" id="detail-datierung">-</div></div>
+                <div class="data-group"><span class="data-label">Priesterinnentitel</span><div class="data-value" id="detail-titel" style="font-weight: bold; color: var(--primary-color);">-</div></div>
+                <div class="data-group"><span class="data-label">Familie</span><div class="data-value" id="detail-familie">-</div></div>
+                <div class="data-group"><span class="data-label">Inschriftentext</span><div class="data-value epigraph-text" id="detail-text">-</div></div>
+                <div class="data-group"><span class="data-label">Belegstelle</span><div class="data-value" id="detail-belegstelle">-</div></div>
+                <div class="data-group"><span class="data-label">Inschriften Art</span><div class="data-value" id="detail-art">-</div></div>
+                <div class="data-group"><span class="data-label">Anmerkung</span><div class="data-value" id="detail-anmerkung">-</div></div>
+                <div class="data-group"><span class="data-label">Literatur</span><div class="data-value" id="detail-literatur">-</div></div>
+            </div>
+            
+            <div class="placeholder-text" id="sidebar-placeholder">
+                Klicke auf eine Stecknadel auf der Karte, um die epigraphischen Daten auszuwerten.
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        const map = L.map('map').setView([41.9, 12.5], 5);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 10
+        }).addTo(map);
+
+        fetch('data/provinces.geojson')
+            .then(response => response.ok ? response.json() : null)
+            .then(data => {
+                if(data) L.geoJSON(data, { style: { color: "#8b0000", weight: 1.5, fillColor: "#e6e1d1", fillOpacity: 0.4 } }).addTo(map);
+            }).catch(e => console.log("GeoJSON Fehler:", e));
+
+        // Priesterinnen laden + Fehlerbehandlung
+        fetch('data/priesterinnen.json')
+            .then(response => {
+                if (!response.ok) throw new Error("Datei nicht gefunden. Server-Problem.");
+                return response.json();
+            })
+            .then(data => {
+                data.forEach(priesterin => {
+                    if (priesterin.Koordinaten && priesterin.Koordinaten.length === 2) {
+                        const marker = L.circleMarker(priesterin.Koordinaten, {
+                            radius: 8, fillColor: "#8b0000", color: "#ffffff", weight: 2, opacity: 1, fillOpacity: 0.8
+                        }).addTo(map);
+
+                        marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
+
+                        marker.on('click', () => {
+                            try { showDetails(priesterin); } 
+                            catch (e) { console.error("Fehler bei Anzeige:", e); }
+                        });
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("JSON Syntax Error:", error);
+                alert("Kritischer Fehler: Die Datei 'priesterinnen.json' konnte nicht gelesen werden. Es liegt sehr wahrscheinlich ein Syntaxfehler vor (z. B. ein vergessenes Komma, ein fehlendes Anführungszeichen). \n\nPrüfe deine JSON Datei.");
+            });
+
+        function showDetails(data) {
+            document.getElementById('sidebar-placeholder').style.display = 'none';
+            document.getElementById('sidebar-data').style.display = 'block';
+
+            document.getElementById('detail-name').innerText = data.Name || 'Unbekannt';
+            document.getElementById('detail-fundort').innerText = data.Fundort || '-';
+            document.getElementById('detail-datierung').innerText = data.Datierung || 'Unbekannt';
+            document.getElementById('detail-titel').innerText = data.Priesterinnentitel || '-';
+            document.getElementById('detail-familie').innerText = data.Familie || '-';
+            document.getElementById('detail-text').innerText = data.Inschriftentext || 'Kein Text vorhanden';
+            document.getElementById('detail-belegstelle').innerText = data.Belegstelle || '-';
+            document.getElementById('detail-art').innerText = data.Inschriften_Art || '-';
+            document.getElementById('detail-anmerkung').innerText = data.Anmerkung || '-';
+            document.getElementById('detail-literatur').innerText = data.Literatur || '-';
+
+            const imgElement = document.getElementById('detail-bild');
+            if (data.Bild && typeof data.Bild === 'string' && data.Bild.trim() !== "") {
+                imgElement.src = data.Bild;
+                imgElement.style.display = 'block';
+            } else {
+                imgElement.src = "";
+                imgElement.style.display = 'none';
+            }
+
+            document.getElementById('sidebar').classList.add('active');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('active');
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaiPries - Kaiserpriesterinnen im antiken Rom</title>
     
     <!-- Leaflet CSS für die Karte -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
