@@ -394,6 +394,12 @@
             margin-bottom: 5px;
             border-bottom: 2px solid var(--primary-color);
             padding-bottom: 10px;
+            cursor: grab; /* Aktiviert den Drag-Mauszeiger */
+            user-select: none; /* Verhindert, dass der Text beim Ziehen markiert wird */
+        }
+
+        .tool-header:active {
+            cursor: grabbing; /* Mauszeiger beim aktiven Ziehen */
         }
 
         .tool-header h3 {
@@ -1495,6 +1501,55 @@
                 closeTutorial();
             }
         }
+
+        // --- DRAG & DROP LOGIK FÜR TOOL-PANEL ---
+        const filterContainer = document.getElementById('filter-container');
+        const toolHeader = filterContainer.querySelector('.tool-header');
+
+        let isDragging = false;
+        let dragStartX, dragStartY;
+        let initialLeft, initialTop;
+
+        toolHeader.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            // Drag abbrechen, wenn der Schließen-Button ("X") geklickt wird
+            if (e.target.classList.contains('close-btn')) return;
+
+            isDragging = true;
+
+            const rect = filterContainer.getBoundingClientRect();
+
+            // Löst die CSS-Zentrierung auf (transform: translateX(-50%))
+            // Dies wandelt die Position in feste Pixelwerte um
+            if (filterContainer.style.transform !== 'none') {
+                filterContainer.style.transform = 'none';
+                filterContainer.style.left = rect.left + 'px';
+                filterContainer.style.top = rect.top + 'px';
+            }
+
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            initialLeft = filterContainer.offsetLeft;
+            initialTop = filterContainer.offsetTop;
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+
+            filterContainer.style.left = (initialLeft + dx) + 'px';
+            filterContainer.style.top = (initialTop + dy) + 'px';
+        }
+
+        function dragEnd() {
+            isDragging = false;
+        }
+
     </script>
 </body>
 </html>
