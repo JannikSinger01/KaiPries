@@ -12,7 +12,7 @@
             --primary-color: #8b0000;
             --bg-color: #f4f1ea;
             --text-color: #2c2c2c;
-            --sidebar-width: 400px;
+            --sidebar-width: 480px; /* Breite der Leisten auf 480px erhöht */
         }
 
         * {
@@ -140,7 +140,7 @@
             flex-grow: 1;
         }
 
-        /* Bild und Platzhalter styling */
+        /* Bild, Platzhalter und Lightbox styling */
         .detail-image {
             max-width: 100%; 
             height: auto; 
@@ -148,6 +148,12 @@
             margin-bottom: 20px; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: none;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .detail-image:hover {
+            transform: scale(1.02);
         }
 
         .image-placeholder {
@@ -164,6 +170,43 @@
             margin-bottom: 20px;
             text-align: center;
             padding: 20px;
+        }
+
+        #lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #lightbox.active {
+            display: flex;
+        }
+
+        #lightbox img {
+            max-width: 90%;
+            max-height: 85%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 2px solid white;
+            border-radius: 4px;
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 3rem;
+            cursor: pointer;
+            background: none;
+            border: none;
         }
 
         .data-group {
@@ -223,8 +266,8 @@
             </div>
             
             <div class="sidebar-content" id="sidebar-left-data" style="display: none;">
-                <!-- Bild Container -->
-                <img id="detail-bild" class="detail-image" src="" alt="Bild der Inschrift">
+                <!-- Bild Container (mit Lightbox-Aufruf) -->
+                <img id="detail-bild" class="detail-image" src="" alt="Bild der Inschrift" onclick="openLightbox(this.src)" title="Klicken zum Vergrößern">
                 <div id="bild-platzhalter" class="image-placeholder">
                     Kein Bild in der Datenbank hinterlegt.
                 </div>
@@ -263,6 +306,12 @@
                 Klicke auf eine Stecknadel auf der Karte, um die epigraphischen Daten auszuwerten.
             </div>
         </div>
+
+        <!-- LIGHTBOX OVERLAY -->
+        <div id="lightbox" onclick="closeLightbox()">
+            <button id="lightbox-close">&times;</button>
+            <img id="lightbox-img" src="" alt="Vergrößertes Epigraph">
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -282,6 +331,34 @@
             "Inschriften_Art": "-",
             "Familie": "Ehemann: Aurelius Honoratus aus der Tribus Quirina, flamen Augusti perpetuus",
             "Anmerkung": "Ehrungen für Mann und Frau",
+            "Literatur": "-",
+            "Bild": ""
+          },
+          {
+            "Name": "Marcia Pompeiana",
+            "Priesterinnentitel": "flaminica perpetua Lepititanae",
+            "Datierung": "2 Jh. n. Chr.",
+            "Fundort": "Leptis Minor",
+            "Koordinaten": [35.671, 10.879],
+            "Belegstelle": "CIL 8, 22902",
+            "Inschriftentext": "Marcia Sex(ti) f(iliae) / Pompeianae / Caesariensi M(arci) No/ni Capitonis fla/minicae perp(etuae) Lep/titanae optimae / femiae / M(arcus) Caecilius Lurianus / et P(ublius) Postumius M[a]rianus",
+            "Inschriften_Art": "Ehreninschrift",
+            "Familie": "Ehemann: Marcus Nonius Capito (?)",
+            "Anmerkung": "-",
+            "Literatur": "-",
+            "Bild": ""
+          },
+          {
+            "Name": "Terentia Sp[3]ra[3]",
+            "Priesterinnentitel": "sacerdos",
+            "Datierung": "-",
+            "Fundort": "Mactaris",
+            "Koordinaten": [35.856, 9.206],
+            "Belegstelle": "CIL 8, 23405",
+            "Inschriftentext": "Veneri Aug(ustae) [sacr(um)] / pro salute et incolumita[te] / Im(peratoris) Caes(aris) L(uci) Septimi Seve/ri Pii Perinnacis / Aug(usti) p(atris) p(atriae) et / Im(peratoris) Caes(aris) M(arci) Aureli Anto/nini Aug(usti) princip[i] / [[6]] / [[C(a)esaris]] et Iu[liae] / dom[nae] matris [Augg(ustrorum)] / et castro[r(um) et patriae] / Terentia Sp[3]ra[3] / sacerdos [3] / v(otum) s(olvit) l(ibens) m(erito)",
+            "Inschriften_Art": "Weihinschrift",
+            "Familie": "-",
+            "Anmerkung": "der Venus Augusta geweiht für Gesundheit und Wohlergehen des Septimius Severus und der Iulia Domna. Es ist möglich, dass es sich hier um eine Priesterin der Iulia Domna handelt, aber nicht sicher.",
             "Literatur": "-",
             "Bild": ""
           }
@@ -308,7 +385,13 @@
             priesterinnenData.forEach(priesterin => {
                 if (priesterin.Koordinaten && priesterin.Koordinaten.length === 2) {
                     const marker = L.circleMarker(priesterin.Koordinaten, {
-                        radius: 8, fillColor: "#8b0000", color: "#ffffff", weight: 2, opacity: 1, fillOpacity: 0.8
+                        radius: 8, 
+                        fillColor: "#8b0000", 
+                        color: "#ffffff", 
+                        weight: 2, 
+                        opacity: 1, 
+                        fillOpacity: 1,
+                        pane: 'markerPane' // Erwingt, dass der Punkt ÜBER den GeoJSON-Flächen liegt
                     }).addTo(map);
 
                     marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
@@ -323,14 +406,12 @@
 
         // Sidebar Logik
         function showDetails(data) {
-            // Sichtbarkeit der Content-Bereiche aktivieren (beide Leisten)
             document.getElementById('sidebar-placeholder').style.display = 'none';
             document.getElementById('sidebar-data').style.display = 'block';
             
             document.getElementById('sidebar-left-placeholder').style.display = 'none';
             document.getElementById('sidebar-left-data').style.display = 'block';
 
-            // Daten in rechte Leiste einfügen
             document.getElementById('detail-name').innerText = data.Name || 'Unbekannt';
             document.getElementById('detail-fundort').innerText = data.Fundort || '-';
             document.getElementById('detail-datierung').innerText = data.Datierung || 'Unbekannt';
@@ -341,32 +422,51 @@
             document.getElementById('detail-anmerkung').innerText = data.Anmerkung || '-';
             document.getElementById('detail-literatur').innerText = data.Literatur || '-';
 
-            // Daten in linke Leiste einfügen
             document.getElementById('detail-belegstelle').innerText = data.Belegstelle || '-';
 
-            // Bild laden oder Platzhalter anzeigen
             const imgElement = document.getElementById('detail-bild');
             const placeholderElement = document.getElementById('bild-platzhalter');
+            
+            // Alten Event-Listener zurücksetzen, um Konflikte zu vermeiden
+            imgElement.onerror = null;
             
             if (data.Bild && typeof data.Bild === 'string' && data.Bild.trim() !== "") {
                 imgElement.src = data.Bild;
                 imgElement.style.display = 'block';
                 placeholderElement.style.display = 'none';
+
+                // Fallback: Wenn das Bild nicht geladen werden kann (z.B. falscher Pfad)
+                imgElement.onerror = () => {
+                    imgElement.style.display = 'none';
+                    placeholderElement.style.display = 'flex';
+                };
             } else {
                 imgElement.src = "";
                 imgElement.style.display = 'none';
                 placeholderElement.style.display = 'flex';
             }
 
-            // Beide Leisten ins Bild fahren
             document.getElementById('sidebar').classList.add('active');
             document.getElementById('sidebar-left').classList.add('active');
         }
 
         function closeSidebar() {
-            // Beide Leisten aus dem Bild fahren
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('sidebar-left').classList.remove('active');
+        }
+
+        // Lightbox Logik
+        function openLightbox(src) {
+            if (!src) return;
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            lightboxImg.src = src;
+            lightbox.classList.add('active');
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('active');
         }
     </script>
 </body>
