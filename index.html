@@ -6,13 +6,16 @@
     <title>KaiPries - Kaiserpriesterinnen im antiken Rom</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Neu: MarkerCluster & Heatmap Bibliotheken -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 
     <style>
         :root {
             --primary-color: #8b0000;
             --bg-color: #f4f1ea;
             --text-color: #2c2c2c;
-            --sidebar-width: 480px; /* Breite der Leisten auf 480px erhöht */
+            --sidebar-width: 480px; 
         }
 
         * {
@@ -132,6 +135,7 @@
             font-size: 1.5rem; 
             cursor: pointer; 
             color: #666;
+            line-height: 1;
         }
 
         .sidebar-content {
@@ -256,7 +260,7 @@
             padding: 15px;
             border-radius: 4px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 999; /* Unter der Sidebar */
+            z-index: 999; 
         }
 
         .legend-box h3 {
@@ -294,19 +298,18 @@
             margin-right: 10px;
         }
 
-        /* --- TOOLBOX & ZEITLEISTE --- */
-        .toolbox {
+        /* --- TOOLBOX (Button & Dropdown Oben Rechts) --- */
+        .toolbox-wrapper {
             position: absolute;
             top: 20px; 
             right: 20px;
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 999;
+            z-index: 1001; /* Muss über allem anderen liegen */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
         }
 
-        .toolbox button {
+        .toolbox-btn {
             background: var(--bg-color);
             border: 1px solid #ccc;
             padding: 8px 12px;
@@ -317,35 +320,197 @@
             font-weight: bold;
             color: var(--text-color);
             transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        .toolbox button:hover {
+        .toolbox-btn:hover {
             background: #e2dfd8;
         }
 
-        #timeline-container {
+        .toolbox-menu {
+            display: none;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-top: 5px;
+            flex-direction: column;
+            min-width: 180px;
+            overflow: hidden;
+        }
+
+        .toolbox-menu.active {
+            display: flex;
+        }
+
+        .toolbox-menu button {
+            background: none;
+            border: none;
+            border-bottom: 1px solid #eee;
+            padding: 10px 15px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            color: var(--text-color);
+            transition: background 0.2s;
+        }
+
+        .toolbox-menu button:last-child {
+            border-bottom: none;
+        }
+
+        .toolbox-menu button:hover {
+            background: #f4f1ea;
+        }
+
+        /* --- ZENTRALES TOOL-PANEL (Obere Mitte) --- */
+        #filter-container {
             position: absolute;
-            top: 110px; /* Abstand vergrößert, um Überlappung mit der Titel-Box zu verhindern */
+            top: 110px; 
             left: 50%;
             transform: translateX(-50%);
             background: white;
-            padding: 10px 15px;
+            padding: 20px;
             border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             z-index: 1000;
-            display: none; /* Initial versteckt */
+            display: none; 
             flex-direction: column;
-            align-items: flex-start;
-            min-width: 350px;
+            gap: 15px;
+            width: 400px;
+            max-height: 75vh;
+            overflow-y: auto;
         }
 
-        #timeline-container.active {
+        #filter-container.active {
             display: flex;
+        }
+
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        .tool-header h3 {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+
+        /* --- GIS & MESSWERKZEUG STYLING --- */
+        .gis-btn {
+            background-color: white;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            text-align: left;
+            width: 100%;
+        }
+
+        .gis-btn.active, .gis-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .measure-info-box {
+            font-size: 0.85rem;
+            color: #444;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f4f1ea;
+            border-left: 3px solid var(--primary-color);
+            border-radius: 2px;
+            display: none;
+        }
+
+        .measure-tooltip {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--primary-color);
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* --- AKKORDEON STRUKTUR FÜR TOOLS --- */
+        .accordion-btn {
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 10px 15px;
+            width: 100%;
+            text-align: left;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            font-weight: bold;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .accordion-btn:hover {
+            background-color: #e2dfd8;
+        }
+
+        .accordion-btn::after {
+            content: '\25BC'; 
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .accordion-btn.active::after {
+            content: '\25B2'; 
+        }
+
+        .accordion-content {
+            display: none;
+            padding: 15px 5px 5px 5px;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .accordion-content.active {
+            display: flex;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .filter-group input[type="text"],
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            width: 100%;
         }
 
         .slider-wrapper {
             width: 100%;
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
         .timeline-slider {
@@ -413,23 +578,92 @@
             </div>
         </div>
 
-        <!-- TOOLBOX OBERHALB -->
-        <div class="toolbox">
-            <button onclick="toggleTimeline()">⚙️ Filter / Tools</button>
+        <!-- TOOLBOX (Button & Dropdown Oben Rechts) -->
+        <div class="toolbox-wrapper">
+            <button class="toolbox-btn" onclick="toggleToolboxMenu()">⚙️ Toolbox</button>
+            <div class="toolbox-menu" id="toolbox-menu">
+                <button onclick="openCenterTool('filter-container')">🔍 Suche & Filter</button>
+                <button onclick="openCenterTool('gis-container')">🗺️ Räumliche Analyse</button>
+            </div>
         </div>
 
-        <!-- ZEITLEISTE UNTERHALB DER TITEL-BOX -->
-        <div id="timeline-container">
-            <span style="font-size: 0.85rem; font-weight: bold;">Datierung filtern:</span>
-            <div class="slider-wrapper">
-                <input type="range" min="0" max="4" value="0" class="timeline-slider" id="century-slider" oninput="updateSliderFilter(this.value)">
-                <div class="slider-labels" id="slider-labels">
-                    <span class="active-label">Alle</span>
-                    <span>1. Jh.</span>
-                    <span>2. Jh.</span>
-                    <span>3. Jh.</span>
-                    <span>Unbekannt</span>
+        <!-- ZENTRALES TOOL-PANEL (öffnet sich nach Auswahl im Toolbox-Menu) -->
+        <div id="filter-container">
+            <div class="tool-header">
+                <h3>Suche & Filter</h3>
+                <button class="close-btn" onclick="closeCenterTool('filter-container')">&times;</button>
+            </div>
+
+            <!-- Akkordeon: Suche -->
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'acc-suche')">Volltextsuche</button>
+            <div class="accordion-content" id="acc-suche">
+                <div class="filter-group">
+                    <input type="text" id="search-filter" placeholder="Suchbegriff (z.B. Name, CIL, Ceres)..." oninput="applyFilters()">
                 </div>
+            </div>
+
+            <!-- Akkordeon: Kategorien & Region -->
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'acc-kategorien')">Kategorien & Region</button>
+            <div class="accordion-content" id="acc-kategorien">
+                <div class="filter-group">
+                    <label for="prov-filter">Provinz / Region:</label>
+                    <select id="prov-filter" onchange="applyFilters()">
+                        <option value="all">Alle Provinzen</option>
+                        <option value="unknown">Unbekannt</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="art-filter">Inschriftenart:</label>
+                    <select id="art-filter" onchange="applyFilters()">
+                        <option value="all">Alle Arten</option>
+                        <option value="unknown">Unbekannt</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="titel-filter">Priesterinnentitel:</label>
+                    <select id="titel-filter" onchange="applyFilters()">
+                        <option value="all">Alle Titel</option>
+                        <option value="unknown">Unbekannt</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Akkordeon: Datierung -->
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'acc-datierung')">Datierung filtern</button>
+            <div class="accordion-content" id="acc-datierung">
+                <div class="filter-group">
+                    <div class="slider-wrapper">
+                        <input type="range" min="0" max="4" value="0" class="timeline-slider" id="century-slider" oninput="applyFilters()">
+                        <div class="slider-labels" id="slider-labels">
+                            <span class="active-label">Alle</span>
+                            <span>1. Jh.</span>
+                            <span>2. Jh.</span>
+                            <span>3. Jh.</span>
+                            <span>Unbek.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEU: GIS & ANALYSE-PANEL -->
+        <div id="gis-container" class="center-panel" style="position: absolute; top: 110px; left: 50%; transform: translateX(-50%); background: white; padding: 20px; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: none; flex-direction: column; gap: 15px; width: 400px; max-height: 75vh; overflow-y: auto;">
+            <div class="tool-header">
+                <h3>Räumliche Analyse</h3>
+                <button class="close-btn" onclick="closeCenterTool('gis-container')">&times;</button>
+            </div>
+
+            <div class="filter-group">
+                <label>Karten-Ansicht (Ebenen):</label>
+                <button class="gis-btn active" id="btn-mode-normal" onclick="setMapMode('normal')">Standard (Einzelne Nadeln)</button>
+                <button class="gis-btn" id="btn-mode-cluster" onclick="setMapMode('cluster')">Clustering (Fasst überlagernde Orte zusammen)</button>
+                <button class="gis-btn" id="btn-mode-heatmap" onclick="setMapMode('heatmap')">Heatmap (Dichtekarte der Funde)</button>
+            </div>
+
+            <div class="filter-group" style="margin-top: 10px;">
+                <label>Messwerkzeug:</label>
+                <button class="gis-btn" id="btn-measure" onclick="toggleMeasurement()">📏 Distanzmessung starten</button>
+                <div id="measure-info" class="measure-info-box"></div>
             </div>
         </div>
 
@@ -468,6 +702,7 @@
             
             <div class="sidebar-content" id="sidebar-data" style="display: none;">
                 <div class="data-group"><span class="data-label">Fundort</span><div class="data-value" id="detail-fundort">-</div></div>
+                <div class="data-group"><span class="data-label">Provinz</span><div class="data-value" id="detail-provinz">-</div></div>
                 <div class="data-group"><span class="data-label">Datierung</span><div class="data-value" id="detail-datierung">-</div></div>
                 <div class="data-group"><span class="data-label">Priesterinnentitel</span><div class="data-value" id="detail-titel" style="font-weight: bold; color: var(--primary-color);">-</div></div>
                 <div class="data-group"><span class="data-label">Familie</span><div class="data-value" id="detail-familie">-</div></div>
@@ -489,17 +724,20 @@
         </div>
     </div>
 
+    <!-- Plugins laden -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
     <script>
-        // DATENBLOCK: Für die Vorschau hier fest integriert. 
-        // Für GitHub: Lösche diesen Block und nutze stattdessen <script src="js/priesterinnen.js">
+        // DATENBLOCK mit neuem Attribut "Provinz"
         const priesterinnenData = [
           {
             "Name": "Honoratia",
             "Priesterinnentitel": "flamincae divae Liviae (? Evt. Auch Iuliae?)",
             "Datierung": "1. Jh. ?",
             "Fundort": "Hippo Regius",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.8989, 7.7533],
             "Belegstelle": "AE 1958, 144",
             "Inschriftentext": "[1 Au]relio Q(uinti) fil(io) Quir(ina) Honorato / [flamini A]ug(usti) p(er)p(etuo) omnibus honoribus functo / [ob insigne]m in cives amorem et ob honestissi/[mam egregiamq]ue eius liberalitatem quo testa/[mento dedit illatis(?) HS] C mil(ibus) in die natali Mariae / [3 Honora]tianae(?) uxoris suae flami/[nicae divae Liv]iae(?) perpetuo decurio/[nibus item curiis omnibus] et Augustalibus epula/[3]RIA[3 cl]ar[i]ssim[us ordo] et populus Hipponiensis / [3] ex [3 sp]ortulas [et] at referendam memoriae / [statuam decreverunt item 3]F AN[3]RASTAR[3 et Ma]riae(?) Saturninae uxori eius / [3]VR[3]IA[3] et quae honor(e) content[(a) s(ua) p(ecunia) p(osuit?)]",
@@ -514,6 +752,7 @@
             "Priesterinnentitel": "flaminica perpetua Lepititanae",
             "Datierung": "2 Jh. n. Chr.",
             "Fundort": "Leptis Minor",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [35.671, 10.879],
             "Belegstelle": "CIL 8, 22902",
             "Inschriftentext": "Marcia Sex(ti) f(iliae) / Pompeianae / Caesariensi M(arci) No/ni Capitonis fla/minicae perp(etuae) Lep/titanae optimae / femiae / M(arcus) Caecilius Lurianus / et P(ublius) Postumius M[a]rianus",
@@ -528,6 +767,7 @@
             "Priesterinnentitel": "sacerdos",
             "Datierung": "-",
             "Fundort": "Mactaris",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [35.856, 9.206],
             "Belegstelle": "CIL 8, 23405",
             "Inschriftentext": "Veneri Aug(ustae) [sacr(um)] / pro salute et incolumita[te] / Im(peratoris) Caes(aris) L(uci) Septimi Seve/ri Pii Perinnacis / Aug(usti) p(atris) p(atriae) et / Im(peratoris) Caes(aris) M(arci) Aureli Anto/nini Aug(usti) princip[i] / [[6]] / [[C(a)esaris]] et Iu[liae] / dom[nae] matris [Augg(ustrorum)] / et castro[r(um) et patriae] / Terentia Sp[3]ra[3] / sacerdos [3] / v(otum) s(olvit) l(ibens) m(erito)",
@@ -542,6 +782,7 @@
             "Priesterinnentitel": "flaminica of Mustis",
             "Datierung": "222-235 n. Chr.",
             "Fundort": "Mustis",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.331, 9.150],
             "Belegstelle": "AE 1968, 588",
             "Inschriftentext": "Cereri Aug(ustae) sac(rum) pro [salute] / Imp(eratoris) Caes(aris) M(arci) Aureli(i) Severi A[lexandri] / Pii Felicis Aug(usti) [[et Iuliae Mamaeae Aug(ustae)]] / [[matris Aug(usti)]] et senatus et cas[trorum et pa]/triae munus quod Iulia Q(uinti) f(ilia) [--- ho]/nestae memoriae flaminica imi[tata paren]/tes maioresq(ue) suos qui munifici in [patriam] / extiterunt id est C(aium) Iulium C(ai) f(ilium) Cor(nelia) Fe[licem] / Felinianum fl(aminem) perp(etuum) qui statuam Iov[i Victo]/ri in foro posuit patriae suae per decr[etum] / universi ordinis promisit inlata suo [tempo]/re legitima summa honoris et ampliu[s curi]/ae honestiss(imae) Aug(ustae) classi prim(a)e summam p[ecu]/niae dignam ex cuius usuris annuis redac[tis] / omnib(us) annis in perpetuum epularetur t[ri]/buit donoq(ue) dedit epulumq(ue) decedens ob dedi[c(ationem)] / curiis dari iussit Q(uintus) Iulius Felix frater eius / et Iulius Homullus et Iulius Honoratus eius / ab ea statuam adlat(am) statuer(unt) et epulo curiis dato ded(icaverunt)",
@@ -556,6 +797,7 @@
             "Priesterinnentitel": "flaminica",
             "Datierung": "218-222 n.Chr.",
             "Fundort": "Mustis",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.331, 9.150],
             "Belegstelle": "CIL 8, 1578",
             "Inschriftentext": "pro salute Imp(eratoris)] Caes(aris) [[3]] [et [[3]] Aug(usti) matris castr]orum Maria Lucina flam(inica) et L(ucius) Fulvius Kastus Ful/[vianus 3 proc(urator) prov(inciae) Africae tr]act(us) Kart(haginis) et Galliae Narbo[nensis 3 et L(ucius) Fulvius 3] Britanniae inferior(is) fili(i) eius cum ob honor(em) eiusd(em) / [3 promisissent adiectis ex li]beralitate sua amplius HS X[3 n(ummum) 3 fecerunt 3 ob dedicationem sp]ortulis decurionibus et epulis civibus datis",
@@ -570,6 +812,7 @@
             "Priesterinnentitel": "flaminica perpetua",
             "Datierung": "2-3 Jh. n. Chr.",
             "Fundort": "Muzuc",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.195, 9.445],
             "Belegstelle": "CIL 8, 12067",
             "Inschriftentext": "[---] | Plautiae Ep[---] | quae ob hon(orem) flam(oni) [p(er)p(etui)] | aedem a solo c[um] | statuis ex HS X[--] m(ilibus) n(ummum) | promiserat Plau|ti Faustus et Auge | her(edes) ampl(iata) pecun(ia) | perfecerunt.",
@@ -597,11 +840,49 @@
                 if(data) L.geoJSON(data, { style: { color: "#8b0000", weight: 1.5, fillColor: "#e6e1d1", fillOpacity: 0.4 } }).addTo(map);
             }).catch(e => console.log("AWMC GeoJSON blockiert in Vorschau-Umgebung."));
 
-        // Globales Array für Marker-Verwaltung (Zeitleisten-Filter)
+        // Globales Array für Marker-Verwaltung und Ebenen
         const allMarkers = [];
+        
+        const normalLayerGroup = L.featureGroup().addTo(map);
+        
+        const clusterLayerGroup = L.markerClusterGroup({
+            maxClusterRadius: 40,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true
+        });
+        
+        let heatmapLayer = L.heatLayer([], { radius: 25, blur: 15, maxZoom: 10 });
+
+        let currentMapMode = 'normal'; // 'normal', 'cluster', 'heatmap'
+        let currentProvinceFilter = "all"; // State-Tracker für Karten-Zentrierung
+
+        // Funktion: Dropdowns dynamisch aus Daten füllen
+        function populateDropdowns() {
+            const provSet = new Set();
+            const artSet = new Set();
+            const titelSet = new Set();
+
+            priesterinnenData.forEach(d => {
+                if (d.Provinz && d.Provinz !== '-') provSet.add(d.Provinz);
+                if (d.Inschriften_Art && d.Inschriften_Art !== '-') artSet.add(d.Inschriften_Art);
+                if (d.Priesterinnentitel && d.Priesterinnentitel !== '-') titelSet.add(d.Priesterinnentitel);
+            });
+
+            const provSelect = document.getElementById('prov-filter');
+            provSet.forEach(val => provSelect.add(new Option(val, val)));
+
+            const artSelect = document.getElementById('art-filter');
+            artSet.forEach(val => artSelect.add(new Option(val, val)));
+
+            const titelSelect = document.getElementById('titel-filter');
+            titelSet.forEach(val => titelSelect.add(new Option(val, val)));
+        }
 
         // Marker setzen
         if (typeof priesterinnenData !== 'undefined') {
+            populateDropdowns();
+
             priesterinnenData.forEach(priesterin => {
                 if (priesterin.Koordinaten && priesterin.Koordinaten.length === 2) {
                     const marker = L.circleMarker(priesterin.Koordinaten, {
@@ -611,8 +892,8 @@
                         weight: 2, 
                         opacity: 1, 
                         fillOpacity: 1,
-                        pane: 'markerPane' // Erwingt, dass der Punkt ÜBER den GeoJSON-Flächen liegt
-                    }).addTo(map);
+                        pane: 'markerPane' 
+                    });
 
                     marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
 
@@ -621,56 +902,158 @@
                         catch (e) { console.error("Fehler bei Anzeige:", e); }
                     });
 
-                    // Marker im Array speichern für spätere Filterung
                     allMarkers.push({ marker: marker, data: priesterin });
                 }
             });
+            
+            // Marker initial auf Karte laden (über Filter-Funktion)
+            applyFilters();
         }
 
-        // --- FILTER LOGIK (TOOLBOX & ZEITLEISTE) ---
-        function toggleTimeline() {
-            document.getElementById('timeline-container').classList.toggle('active');
+        // --- TOOLBOX MENU & FILTER LOGIK ---
+
+        // Öffnet/Schließt das kleine Dropdown-Menü der Toolbox oben rechts
+        function toggleToolboxMenu() {
+            document.getElementById('toolbox-menu').classList.toggle('active');
         }
 
-        function updateSliderFilter(val) {
-            val = parseInt(val);
-            const mapping = ['all', '1', '2', '3', 'unknown'];
-            const targetCentury = mapping[val];
+        // Öffnet ein dediziertes Tool-Fenster in der Mitte und schließt das Menü
+        function openCenterTool(toolId) {
+            document.getElementById('toolbox-menu').classList.remove('active');
+            
+            // Schließt alle anderen potenziellen Center-Tools (Zukunftssicherheit)
+            document.querySelectorAll('#app-container > div[id$="-container"]').forEach(el => {
+                el.classList.remove('active');
+            });
 
-            // Aktive Labels visuell updaten
+            document.getElementById(toolId).classList.add('active');
+        }
+
+        // Schließt das mittige Tool-Panel
+        function closeCenterTool(toolId) {
+            document.getElementById(toolId).classList.remove('active');
+            
+            // Wenn das GIS Tool geschlossen wird, breche eine evtl. laufende Messung ab
+            if(toolId === 'gis-container' && measureState !== 0) {
+                toggleMeasurement();
+            }
+        }
+
+        // Funktion für das Akkordeon-Verhalten innerhalb des Filter-Panels
+        function toggleAccordion(btnElement, contentId) {
+            const content = document.getElementById(contentId);
+            content.classList.toggle('active');
+            btnElement.classList.toggle('active');
+        }
+
+        function applyFilters() {
+            // Werte aller Filter auslesen
+            const searchVal = document.getElementById('search-filter').value.toLowerCase();
+            const provVal = document.getElementById('prov-filter').value;
+            const artVal = document.getElementById('art-filter').value;
+            const titelVal = document.getElementById('titel-filter').value;
+            
+            const sliderVal = parseInt(document.getElementById('century-slider').value);
+            const centuryMapping = ['all', '1', '2', '3', 'unknown'];
+            const centuryVal = centuryMapping[sliderVal];
+
+            // Aktive Zeitleisten-Labels visuell updaten
             const labels = document.getElementById('slider-labels').children;
             for(let i = 0; i < labels.length; i++) {
-                if(i === val) {
-                    labels[i].classList.add('active-label');
-                } else {
-                    labels[i].classList.remove('active-label');
-                }
+                if(i === sliderVal) labels[i].classList.add('active-label');
+                else labels[i].classList.remove('active-label');
             }
 
-            // Geöffnete Sidebars schließen, um Inkonsistenzen zu vermeiden
+            // Geöffnete Sidebars schließen
             closeSidebar();
             closeLightbox();
 
-            allMarkers.forEach(item => {
-                const datierung = item.data.Datierung || "";
-                let show = false;
+            let visibleMarkers = [];
+            let heatmapPoints = [];
 
-                if (targetCentury === 'all') {
-                    show = true;
-                } else if (targetCentury === 'unknown') {
-                    // "Unbekannt" oder "-" enthalten typischerweise keine Ziffern
-                    if (!datierung.match(/\d/)) show = true;
-                } else {
-                    // Sucht nach der Ziffer des Jahrhunderts im Datierungs-String
-                    if (datierung.includes(targetCentury)) show = true;
+            // Ebenen leeren vor Neuaufbau
+            normalLayerGroup.clearLayers();
+            clusterLayerGroup.clearLayers();
+            if (map.hasLayer(heatmapLayer)) {
+                map.removeLayer(heatmapLayer);
+            }
+
+            // Evaluierung jedes Datensatzes
+            allMarkers.forEach(item => {
+                const d = item.data;
+                let show = true;
+
+                // 1. Textsuche
+                if (searchVal) {
+                    const searchStr = `${d.Name || ''} ${d.Belegstelle || ''} ${d.Inschriftentext || ''}`.toLowerCase();
+                    if (!searchStr.includes(searchVal)) show = false;
                 }
 
+                // 2. Provinz
+                if (provVal !== 'all') {
+                    if (provVal === 'unknown' && d.Provinz && d.Provinz !== '-') show = false;
+                    else if (provVal !== 'unknown' && d.Provinz !== provVal) show = false;
+                }
+
+                // 3. Inschriftenart
+                if (artVal !== 'all') {
+                    if (artVal === 'unknown' && d.Inschriften_Art && d.Inschriften_Art !== '-') show = false;
+                    else if (artVal !== 'unknown' && d.Inschriften_Art !== artVal) show = false;
+                }
+
+                // 4. Titel
+                if (titelVal !== 'all') {
+                    if (titelVal === 'unknown' && d.Priesterinnentitel && d.Priesterinnentitel !== '-') show = false;
+                    else if (titelVal !== 'unknown' && d.Priesterinnentitel !== titelVal) show = false;
+                }
+
+                // 5. Datierung
+                if (show) { 
+                    const datierung = d.Datierung || "";
+                    if (centuryVal === 'unknown') {
+                        if (datierung.match(/\d/)) show = false;
+                    } else if (centuryVal !== 'all') {
+                        if (!datierung.includes(centuryVal)) show = false;
+                    }
+                }
+
+                // Datenstrukturen updaten je nach Ansichtsmodus
                 if (show) {
-                    if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
-                } else {
-                    if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
+                    visibleMarkers.push(item.marker);
+                    
+                    if (currentMapMode === 'normal') {
+                        normalLayerGroup.addLayer(item.marker);
+                    } else if (currentMapMode === 'cluster') {
+                        clusterLayerGroup.addLayer(item.marker);
+                    } else if (currentMapMode === 'heatmap') {
+                        heatmapPoints.push(item.data.Koordinaten);
+                    }
                 }
             });
+
+            // Aktive Ebene final auf die Karte setzen
+            if (currentMapMode === 'cluster') {
+                if (!map.hasLayer(clusterLayerGroup)) map.addLayer(clusterLayerGroup);
+            } else if (currentMapMode === 'heatmap') {
+                heatmapLayer.setLatLngs(heatmapPoints);
+                if (!map.hasLayer(heatmapLayer)) map.addLayer(heatmapLayer);
+            } else {
+                if (!map.hasLayer(normalLayerGroup)) map.addLayer(normalLayerGroup);
+            }
+
+            // Wenn sich der Provinz-Filter geändert hat, Karte neu zentrieren
+            if (provVal !== currentProvinceFilter) {
+                currentProvinceFilter = provVal;
+                
+                // Falls es für die gefilterte Provinz sichtbare Marker gibt
+                if (provVal !== 'all' && visibleMarkers.length > 0) {
+                    const group = new L.featureGroup(visibleMarkers);
+                    map.flyToBounds(group.getBounds(), { padding: [50, 50], maxZoom: 8 });
+                } else if (provVal === 'all') {
+                    // Zurück zur Standard-Ansicht (Gesamtes Reich)
+                    map.flyTo([41.9, 12.5], 5);
+                }
+            }
         }
 
         // Sidebar Logik
@@ -683,6 +1066,7 @@
 
             document.getElementById('detail-name').innerText = data.Name || 'Unbekannt';
             document.getElementById('detail-fundort').innerText = data.Fundort || '-';
+            document.getElementById('detail-provinz').innerText = data.Provinz || '-';
             document.getElementById('detail-datierung').innerText = data.Datierung || 'Unbekannt';
             document.getElementById('detail-titel').innerText = data.Priesterinnentitel || '-';
             document.getElementById('detail-familie').innerText = data.Familie || '-';
@@ -696,7 +1080,6 @@
             const imgElement = document.getElementById('detail-bild');
             const placeholderElement = document.getElementById('bild-platzhalter');
             
-            // Alten Event-Listener zurücksetzen, um Konflikte zu vermeiden
             imgElement.onerror = null;
             
             if (data.Bild && typeof data.Bild === 'string' && data.Bild.trim() !== "") {
@@ -704,7 +1087,6 @@
                 imgElement.style.display = 'block';
                 placeholderElement.style.display = 'none';
 
-                // Fallback: Wenn das Bild nicht geladen werden kann (z.B. falscher Pfad)
                 imgElement.onerror = () => {
                     imgElement.style.display = 'none';
                     placeholderElement.style.display = 'flex';
@@ -723,6 +1105,81 @@
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('sidebar-left').classList.remove('active');
         }
+
+        // --- GIS & ANALYSE LOGIK ---
+        
+        function setMapMode(mode) {
+            currentMapMode = mode;
+            
+            // UI Update der Buttons
+            document.querySelectorAll('#gis-container .gis-btn:not(#btn-measure)').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-mode-' + mode).classList.add('active');
+            
+            // Wende die bestehenden Filter auf die neue Kartenansicht an
+            applyFilters();
+        }
+
+        // Messwerkzeug Logik
+        let measureState = 0; // 0 = Inaktiv, 1 = Warte auf Startpunkt, 2 = Warte auf Endpunkt
+        let measurePoints = [];
+        let measureGroup = L.featureGroup().addTo(map);
+
+        function toggleMeasurement() {
+            const btn = document.getElementById('btn-measure');
+            const info = document.getElementById('measure-info');
+            
+            if (measureState === 0) {
+                // Aktivieren
+                measureState = 1;
+                measurePoints = [];
+                measureGroup.clearLayers();
+                btn.innerHTML = "❌ Messung abbrechen";
+                btn.style.backgroundColor = "#fff";
+                btn.style.color = "var(--text-color)";
+                info.style.display = "block";
+                info.innerText = "Klicke auf der Karte auf den gewünschten Startpunkt.";
+                document.getElementById('map').style.cursor = 'crosshair';
+            } else {
+                // Deaktivieren / Zurücksetzen
+                measureState = 0;
+                measurePoints = [];
+                measureGroup.clearLayers();
+                btn.innerHTML = "📏 Distanzmessung starten";
+                btn.style.backgroundColor = "white";
+                btn.style.color = "var(--primary-color)";
+                info.style.display = "none";
+                document.getElementById('map').style.cursor = '';
+            }
+        }
+
+        // Interaktion auf der Karte für Messung
+        map.on('click', function(e) {
+            if (measureState === 1) {
+                // Startpunkt gesetzt
+                measurePoints.push(e.latlng);
+                L.circleMarker(e.latlng, { radius: 5, color: '#333', fillColor: '#333', fillOpacity: 1 }).addTo(measureGroup);
+                
+                measureState = 2;
+                document.getElementById('measure-info').innerText = "Startpunkt markiert. Klicke nun auf den Zielort.";
+            } else if (measureState === 2) {
+                // Endpunkt gesetzt
+                measurePoints.push(e.latlng);
+                L.circleMarker(e.latlng, { radius: 5, color: '#333', fillColor: '#333', fillOpacity: 1 }).addTo(measureGroup);
+                
+                // Distanz berechnen (distanceTo gibt Meter zurück)
+                let distanceMeters = measurePoints[0].distanceTo(measurePoints[1]);
+                let distanceKm = (distanceMeters / 1000).toFixed(2);
+                
+                // Linie zeichnen
+                let polyline = L.polyline(measurePoints, { color: '#333', weight: 3, dashArray: '5, 5' }).addTo(measureGroup);
+                polyline.bindTooltip(`${distanceKm} km`, { permanent: true, direction: 'center', className: 'measure-tooltip' }).openTooltip();
+                
+                // Messung abschließen, aber Werkzeug aktiv lassen (für Neustart)
+                measureState = 1; 
+                measurePoints = [];
+                document.getElementById('measure-info').innerHTML = `<b>Ergebnis: ${distanceKm} km.</b><br>Klicke erneut für eine neue Messung.`;
+            }
+        });
 
         // Lightbox Logik
         function openLightbox(src) {
