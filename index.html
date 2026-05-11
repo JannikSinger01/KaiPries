@@ -47,7 +47,8 @@
         .title-box {
             position: absolute;
             top: 20px; 
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background: white;
             padding: 15px 25px;
             border-radius: 4px;
@@ -60,7 +61,6 @@
             font-size: 1.5rem; 
             color: var(--primary-color);
             margin-bottom: 5px; 
-            text-transform: uppercase; 
             letter-spacing: 1px;
         }
 
@@ -70,6 +70,7 @@
             font-style: italic;
         }
 
+        /* --- RECHTE SEITENLEISTE (TEXT) --- */
         #sidebar {
             width: var(--sidebar-width);
             height: 100%;
@@ -89,6 +90,27 @@
             transform: translateX(0);
         }
 
+        /* --- LINKE SEITENLEISTE (BILD & BELEGSTELLE) --- */
+        #sidebar-left {
+            width: var(--sidebar-width);
+            height: 100%;
+            background-color: var(--bg-color);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: absolute;
+            left: 0;
+            transform: translateX(-100%);
+            top: 0;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar-left.active {
+            transform: translateX(0);
+        }
+
+        /* Gemeinsame Sidebar-Klassen */
         .sidebar-header {
             padding: 20px; 
             background-color: white;
@@ -118,6 +140,7 @@
             flex-grow: 1;
         }
 
+        /* Bild und Platzhalter styling */
         .detail-image {
             max-width: 100%; 
             height: auto; 
@@ -125,6 +148,22 @@
             margin-bottom: 20px; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: none;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 250px;
+            background-color: #e2dfd8;
+            border: 2px dashed #bbb;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-style: italic;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 20px;
         }
 
         .data-group {
@@ -176,6 +215,33 @@
 
         <div id="map"></div>
 
+        <!-- LINKE SIDEBAR (Bild & Belegstelle) -->
+        <div id="sidebar-left">
+            <div class="sidebar-header">
+                <h2>Epigraph</h2>
+                <button class="close-btn" onclick="closeSidebar()">&times;</button>
+            </div>
+            
+            <div class="sidebar-content" id="sidebar-left-data" style="display: none;">
+                <!-- Bild Container -->
+                <img id="detail-bild" class="detail-image" src="" alt="Bild der Inschrift">
+                <div id="bild-platzhalter" class="image-placeholder">
+                    Kein Bild in der Datenbank hinterlegt.
+                </div>
+
+                <!-- Belegstelle -->
+                <div class="data-group">
+                    <span class="data-label">Belegstelle</span>
+                    <div class="data-value" id="detail-belegstelle" style="font-weight: bold; color: var(--primary-color);">-</div>
+                </div>
+            </div>
+            
+            <div class="placeholder-text" id="sidebar-left-placeholder">
+                Wähle eine Stecknadel auf der Karte.
+            </div>
+        </div>
+
+        <!-- RECHTE SIDEBAR (Textinformationen) -->
         <div id="sidebar">
             <div class="sidebar-header">
                 <h2 id="detail-name">Name der Priesterin</h2>
@@ -183,14 +249,11 @@
             </div>
             
             <div class="sidebar-content" id="sidebar-data" style="display: none;">
-                <img id="detail-bild" class="detail-image" src="" alt="Bild der Inschrift">
-
                 <div class="data-group"><span class="data-label">Fundort</span><div class="data-value" id="detail-fundort">-</div></div>
                 <div class="data-group"><span class="data-label">Datierung</span><div class="data-value" id="detail-datierung">-</div></div>
                 <div class="data-group"><span class="data-label">Priesterinnentitel</span><div class="data-value" id="detail-titel" style="font-weight: bold; color: var(--primary-color);">-</div></div>
                 <div class="data-group"><span class="data-label">Familie</span><div class="data-value" id="detail-familie">-</div></div>
                 <div class="data-group"><span class="data-label">Inschriftentext</span><div class="data-value epigraph-text" id="detail-text">-</div></div>
-                <div class="data-group"><span class="data-label">Belegstelle</span><div class="data-value" id="detail-belegstelle">-</div></div>
                 <div class="data-group"><span class="data-label">Inschriften Art</span><div class="data-value" id="detail-art">-</div></div>
                 <div class="data-group"><span class="data-label">Anmerkung</span><div class="data-value" id="detail-anmerkung">-</div></div>
                 <div class="data-group"><span class="data-label">Literatur</span><div class="data-value" id="detail-literatur">-</div></div>
@@ -233,7 +296,7 @@
             maxZoom: 10
         }).addTo(map);
 
-        // AWMC Daten laden (Gelingt hier in der Vorschau nicht, wirft aber keinen fatalen Fehler mehr)
+        // AWMC Daten laden
         fetch('data/provinces.geojson')
             .then(response => response.ok ? response.json() : null)
             .then(data => {
@@ -260,34 +323,50 @@
 
         // Sidebar Logik
         function showDetails(data) {
+            // Sichtbarkeit der Content-Bereiche aktivieren (beide Leisten)
             document.getElementById('sidebar-placeholder').style.display = 'none';
             document.getElementById('sidebar-data').style.display = 'block';
+            
+            document.getElementById('sidebar-left-placeholder').style.display = 'none';
+            document.getElementById('sidebar-left-data').style.display = 'block';
 
+            // Daten in rechte Leiste einfügen
             document.getElementById('detail-name').innerText = data.Name || 'Unbekannt';
             document.getElementById('detail-fundort').innerText = data.Fundort || '-';
             document.getElementById('detail-datierung').innerText = data.Datierung || 'Unbekannt';
             document.getElementById('detail-titel').innerText = data.Priesterinnentitel || '-';
             document.getElementById('detail-familie').innerText = data.Familie || '-';
             document.getElementById('detail-text').innerText = data.Inschriftentext || 'Kein Text vorhanden';
-            document.getElementById('detail-belegstelle').innerText = data.Belegstelle || '-';
             document.getElementById('detail-art').innerText = data.Inschriften_Art || '-';
             document.getElementById('detail-anmerkung').innerText = data.Anmerkung || '-';
             document.getElementById('detail-literatur').innerText = data.Literatur || '-';
 
+            // Daten in linke Leiste einfügen
+            document.getElementById('detail-belegstelle').innerText = data.Belegstelle || '-';
+
+            // Bild laden oder Platzhalter anzeigen
             const imgElement = document.getElementById('detail-bild');
+            const placeholderElement = document.getElementById('bild-platzhalter');
+            
             if (data.Bild && typeof data.Bild === 'string' && data.Bild.trim() !== "") {
                 imgElement.src = data.Bild;
                 imgElement.style.display = 'block';
+                placeholderElement.style.display = 'none';
             } else {
                 imgElement.src = "";
                 imgElement.style.display = 'none';
+                placeholderElement.style.display = 'flex';
             }
 
+            // Beide Leisten ins Bild fahren
             document.getElementById('sidebar').classList.add('active');
+            document.getElementById('sidebar-left').classList.add('active');
         }
 
         function closeSidebar() {
+            // Beide Leisten aus dem Bild fahren
             document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('sidebar-left').classList.remove('active');
         }
     </script>
 </body>
