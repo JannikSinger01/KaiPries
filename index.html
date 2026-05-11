@@ -465,45 +465,6 @@
             color: white;
         }
 
-        /* --- GIS STYLING BEREINIGT --- */
-        .gis-btn {
-            background-color: white;
-            color: var(--primary-color);
-            border: 1px solid var(--primary-color);
-            padding: 10px 15px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: bold;
-            font-family: inherit;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            text-align: left;
-            width: 100%;
-        }
-
-        .gis-btn.active, .gis-btn:hover {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .measure-info-box {
-            font-size: 0.85rem;
-            color: #444;
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #f4f1ea;
-            border-left: 3px solid var(--primary-color);
-            border-radius: 2px;
-            display: none;
-        }
-
-        .measure-tooltip {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid var(--primary-color);
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
         /* --- AKKORDEON STRUKTUR FÜR TOOLS --- */
         .accordion-btn {
             background-color: var(--bg-color);
@@ -647,7 +608,6 @@
             <button class="toolbox-btn" onclick="toggleToolboxMenu()">⚙️ Toolbox</button>
             <div class="toolbox-menu" id="toolbox-menu">
                 <button onclick="openCenterTool('filter-container')">🔍 Suche & Filter</button>
-                <button onclick="openCenterTool('gis-container')">🗺️ Räumliche Analyse</button>
                 <button onclick="toggleTableView()">📊 Tabellen-Ansicht</button>
             </div>
         </div>
@@ -729,20 +689,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- NEU: GIS & ANALYSE-PANEL -->
-        <div id="gis-container" class="center-panel" style="position: absolute; top: 110px; left: 50%; transform: translateX(-50%); background: white; padding: 20px; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: none; flex-direction: column; gap: 15px; width: 400px; max-height: 75vh; overflow-y: auto;">
-            <div class="tool-header">
-                <h3>Räumliche Analyse</h3>
-                <button class="close-btn" onclick="closeCenterTool('gis-container')">&times;</button>
-            </div>
-
-            <div class="filter-group">
-                <label>Karten-Ansicht (Ebenen):</label>
-                <button class="gis-btn active" id="btn-mode-normal" onclick="setMapMode('normal')">Standard (Einzelne Nadeln)</button>
-                <button class="gis-btn" id="btn-mode-cluster" onclick="setMapMode('cluster')">Clustering (Fasst überlagernde Orte zusammen)</button>
             </div>
         </div>
 
@@ -899,6 +845,51 @@
             "Anmerkung": "versprach für 10.000 Sesterzen den Bau eines Tempels (aedes) mit Statuen",
             "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 405",
             "Bild": ""
+          },
+          {
+            "Name": "Iunia Saturnina",
+            "Priesterinnentitel": "flaminica",
+            "Datierung": "168-170 n.Chr.",
+            "Fundort": "Numluis",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.438, 9.176],
+            "Belegstelle": "CIL 8, 26121",
+            "Inschriftentext": "[I]ovi Optimo Maximo Iunoni Reginae Minervae Augustae sacrum. | [P]ro salute Imp(eratoris) Caes(aris) M. Aureli Antonini Aug(usti) Armeniaci Medici Part(hici) max(imi) pont(ificis) max(imi) trib(unicia) pot(estate) XXIIII imp(eratoris) V co(n)s(ulis) III p(atris) p(atriae) liberorumq(ue) eius totiusque domus divinae | [L.] Memmius Pecuarius Marcellinus cum suo et L. Memmi Marcelli Pecuariani decurionis c(oloniae) I(uliae) K(arthaginis) flaminis divi Nervae designati filii sui nomine templum Capitoli liberalitate sua | [f]aciendu[m] ex HS XX mil(ibus) n(ummum) patriae suae pago et civitati Numlulitanae promisisset et ob honorem flamoni Iuniae Saturninae uxoris suae ex decreto utriusque ordinis HS IIII m(ilia) n(ummum) in id | opus [e]rogass[et] multiplicata pecunia solo suo extruxit et marmoribus et statuis omnique cultu exornavit itemq(ue) dedicavit ob quam dedicationem decurionibus utriusq(ue) ordinis sportulas | item populo epulum et gymnasium dedit praeterea exigente annona frumenta quantacumq(ue) habuit populo multo minore pretio quam tunc erat benignissime praestitit item ludos scaenicos et gymnasia adsidue dedit.",
+            "Inschriften_Art": "-",
+            "Familie": "sozialer Rang: decurial(?)",
+            "Anmerkung": "ob honorem flamonii der Iunia versprach ihr Ehemann neben 20.000 Sesterzen für einen Tempelbau weitere 40.000 Sesterzen",
+            "Literatur": "Monica Hellström (2014) Public Construction under Diocletian\nA Study of State Involvement in Construction in Roman Era Towns in Present Day Tunisia and Eastern Algeria. https://academiccommons.columbia.edu/catalog/ac:168945\nhttp://www.persee.fr/docAsPDF/mefr_0223-5102_1989_num_101_1_1638.pdf\nhttps://cdr.lib.unc.edu/indexablecontent/uuid:e8dc95ad-4b89-45cb-9fec-6ae64eca8bff",
+            "Bild": ""
+          },
+          {
+            "Name": "Iunia Saturnina",
+            "Priesterinnentitel": "flaminica",
+            "Datierung": "168-170 n.Chr.",
+            "Fundort": "Ammaedara",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [35.566, 8.455],
+            "Belegstelle": "CIL 8, Suppl. 4, 23272 (?)",
+            "Inschriftentext": "D(iis) M(anibus) S(acrum).|M(arcus) Marius Rusti|-cus uix(it) annis XX. Iu|-nia Saturnina| filio pio posuit. H(ic) s(itus) e(st).   D(iis) M(anibus) S(acrum).|M(arcus) Marius Mal|-cio uix(it) annis L.| Iunia Saturnina| Conjugi pio posuit. H(ic) s(itus) e(st).",
+            "Inschriften_Art": "-",
+            "Familie": "Ehemann: Memmius Pecuarius Marcellinus (?)",
+            "Anmerkung": "-",
+            "Literatur": "https://sites.google.com/site/necropolesammaedara/cimetiere-militaire/p10100129",
+            "Bild": ""
+          },
+          {
+            "Name": "Gar(gilia) Fortuna",
+            "Priesterinnentitel": "flaminica perpetua",
+            "Datierung": "-",
+            "Fundort": "Segermes",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.331, 10.297],
+            "Belegstelle": "CIL 8, 11178",
+            "Inschriftentext": "] suam e/[i]usque civibus suis in m[e]/[m]o[r]iam pr(a)estiterunt / Gar() Fortunata fl(aminica) p(erpetua) eiusd(em) / munic(ipii) in solacium amissi karis/simi mariti hanc statuam pe/cunia sua posuit l(ocus) d(atus) d(ecreto) d(ecurionum)",
+            "Inschriften_Art": "Grabinschrift (?)",
+            "Familie": "-",
+            "Anmerkung": "anscheinend hat sie ihrem verstorbenen Ehemann und der Gemeinde eine Statue errichtet , Ort wurde genehmigt",
+            "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 402 (?)\nhttps://www.academia.edu/10307673/_Manus_lanis_occupate.._._Femmes_et_métiers_en_Afrique S. 115",
+            "Bild": ""
           }
         ];
 
@@ -920,17 +911,8 @@
 
         // Globales Array für Marker-Verwaltung und Ebenen
         const allMarkers = [];
-        
-        const normalLayerGroup = L.featureGroup().addTo(map);
-        
-        const clusterLayerGroup = L.markerClusterGroup({
-            maxClusterRadius: 40,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true
-        });
+        const markersLayer = L.featureGroup(); // Ersetzt das Cluster-Plugin
 
-        let currentMapMode = 'normal'; // 'normal', 'cluster'
         let currentProvinceFilter = "all"; // State-Tracker für Karten-Zentrierung
         
         // Tabellen-State
@@ -965,17 +947,49 @@
         if (typeof priesterinnenData !== 'undefined') {
             populateDropdowns();
 
+            const coordTracker = {}; // Speichert die Häufigkeit exakter Koordinaten
+
             priesterinnenData.forEach(priesterin => {
                 if (priesterin.Koordinaten && priesterin.Koordinaten.length === 2) {
-                    const marker = L.circleMarker(priesterin.Koordinaten, {
-                        radius: 8, 
-                        fillColor: "#8b0000", 
-                        color: "#ffffff", 
-                        weight: 2, 
-                        opacity: 1, 
-                        fillOpacity: 1,
-                        pane: 'markerPane' 
-                    }); // .addTo(map) wurde hier entfernt, da applyFilters das nun zentral steuert
+                    
+                    let lat = priesterin.Koordinaten[0];
+                    let lng = priesterin.Koordinaten[1];
+                    const coordKey = `${lat}_${lng}`;
+
+                    let overlapIndex = 0;
+
+                    // Optischen Versatz-Index bei überlagernden Koordinaten ermitteln
+                    if (coordTracker[coordKey]) {
+                        overlapIndex = coordTracker[coordKey];
+                        coordTracker[coordKey]++;
+                    } else {
+                        coordTracker[coordKey] = 1;
+                    }
+
+                    // Fester Pixel-Versatz (unabhängig vom Zoom): 
+                    // 10px nach rechts (bei 16px Breite = ca. 50% Überlappung) und 2px nach unten für Tiefenwirkung
+                    const xShift = overlapIndex * 10;
+                    const yShift = overlapIndex * 2;
+
+                    const customIcon = L.divIcon({
+                        className: '', // Verhindert Leaflet-Standard-Rahmen
+                        html: `<div style="
+                            width: 16px; 
+                            height: 16px; 
+                            background-color: #8b0000; 
+                            border: 2px solid #ffffff; 
+                            border-radius: 50%; 
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+                        "></div>`,
+                        iconSize: [16, 16],
+                        // Der Anker [8,8] ist das Zentrum. Wir verschieben den Anker, um das Icon optisch zu versetzen.
+                        iconAnchor: [8 - xShift, 8 - yShift] 
+                    });
+
+                    // Nutzung von L.marker statt L.circleMarker für die Pixel-genaue Kontrolle
+                    const marker = L.marker([lat, lng], {
+                        icon: customIcon 
+                    }); 
 
                     marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
 
@@ -1049,8 +1063,7 @@
             currentFilteredData = []; // Reset für die Tabelle
 
             // Ebenen leeren vor Neuaufbau
-            normalLayerGroup.clearLayers();
-            clusterLayerGroup.clearLayers();
+            markersLayer.clearLayers();
 
             // Evaluierung jedes Datensatzes
             allMarkers.forEach(item => {
@@ -1091,28 +1104,17 @@
                     }
                 }
 
-                // Datenstrukturen updaten je nach Ansichtsmodus
+                // Datenstrukturen updaten
                 if (show) {
                     visibleMarkers.push(item.marker);
                     currentFilteredData.push(d); // Für Tabelle speichern
-                    
-                    if (currentMapMode === 'normal') {
-                        normalLayerGroup.addLayer(item.marker);
-                    } else if (currentMapMode === 'cluster') {
-                        clusterLayerGroup.addLayer(item.marker);
-                    }
+                    markersLayer.addLayer(item.marker);
                 }
             });
 
-            // Alte Ebenen von der Karte entfernen
-            if (map.hasLayer(normalLayerGroup)) map.removeLayer(normalLayerGroup);
-            if (map.hasLayer(clusterLayerGroup)) map.removeLayer(clusterLayerGroup);
-
             // Aktive Ebene final auf die Karte setzen
-            if (currentMapMode === 'cluster') {
-                map.addLayer(clusterLayerGroup);
-            } else {
-                map.addLayer(normalLayerGroup);
+            if (!map.hasLayer(markersLayer)) {
+                map.addLayer(markersLayer);
             }
 
             // Tabelle aktualisieren, falls offen
@@ -1194,19 +1196,6 @@
             
             // Toolbox-Wrapper wieder einblenden
             document.querySelector('.toolbox-wrapper').style.display = 'flex';
-        }
-
-        // --- GIS & ANALYSE LOGIK ---
-        
-        function setMapMode(mode) {
-            currentMapMode = mode;
-            
-            // UI Update der Buttons
-            document.querySelectorAll('#gis-container .gis-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('btn-mode-' + mode).classList.add('active');
-            
-            // Wende die bestehenden Filter auf die neue Kartenansicht an
-            applyFilters();
         }
 
         // --- TABELLEN ANSICHT LOGIK ---
