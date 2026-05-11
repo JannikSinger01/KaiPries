@@ -246,6 +246,148 @@
             text-align: center; 
             margin-top: 50px;
         }
+
+        /* --- LEGENDE --- */
+        .legend-box {
+            position: absolute;
+            bottom: 20px; 
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 999; /* Unter der Sidebar */
+        }
+
+        .legend-box h3 {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-dot {
+            width: 12px; 
+            height: 12px; 
+            background: var(--primary-color);
+            border: 2px solid white; 
+            border-radius: 50%; 
+            margin-right: 10px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
+        }
+
+        .legend-line {
+            width: 16px; 
+            height: 3px; 
+            background: var(--primary-color);
+            opacity: 0.5; 
+            margin-right: 10px;
+        }
+
+        /* --- TOOLBOX & ZEITLEISTE --- */
+        .toolbox {
+            position: absolute;
+            top: 20px; 
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 999;
+        }
+
+        .toolbox button {
+            background: var(--bg-color);
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-color);
+            transition: background 0.2s;
+        }
+
+        .toolbox button:hover {
+            background: #e2dfd8;
+        }
+
+        #timeline-container {
+            position: absolute;
+            top: 110px; /* Abstand vergrößert, um Überlappung mit der Titel-Box zu verhindern */
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none; /* Initial versteckt */
+            flex-direction: column;
+            align-items: flex-start;
+            min-width: 350px;
+        }
+
+        #timeline-container.active {
+            display: flex;
+        }
+
+        .slider-wrapper {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .timeline-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #e2dfd8;
+            border-radius: 3px;
+            outline: none;
+            margin: 10px 0 15px 0;
+        }
+
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .slider-labels span {
+            text-align: center;
+            width: 20%;
+            transition: color 0.2s;
+        }
+
+        .slider-labels span.active-label {
+            color: var(--primary-color);
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -257,6 +399,39 @@
         </div>
 
         <div id="map"></div>
+
+        <!-- LEGENDE -->
+        <div class="legend-box">
+            <h3>Legende</h3>
+            <div class="legend-item">
+                <div class="legend-line"></div>
+                <span>Grenzen des Römischen Reichs (117 n. Chr.)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot"></div>
+                <span>Fundort Epigraph (Kaiserpriesterin)</span>
+            </div>
+        </div>
+
+        <!-- TOOLBOX OBERHALB -->
+        <div class="toolbox">
+            <button onclick="toggleTimeline()">⚙️ Filter / Tools</button>
+        </div>
+
+        <!-- ZEITLEISTE UNTERHALB DER TITEL-BOX -->
+        <div id="timeline-container">
+            <span style="font-size: 0.85rem; font-weight: bold;">Datierung filtern:</span>
+            <div class="slider-wrapper">
+                <input type="range" min="0" max="4" value="0" class="timeline-slider" id="century-slider" oninput="updateSliderFilter(this.value)">
+                <div class="slider-labels" id="slider-labels">
+                    <span class="active-label">Alle</span>
+                    <span>1. Jh.</span>
+                    <span>2. Jh.</span>
+                    <span>3. Jh.</span>
+                    <span>Unbekannt</span>
+                </div>
+            </div>
+        </div>
 
         <!-- LINKE SIDEBAR (Bild & Belegstelle) -->
         <div id="sidebar-left">
@@ -361,6 +536,48 @@
             "Anmerkung": "der Venus Augusta geweiht für Gesundheit und Wohlergehen des Septimius Severus und der Iulia Domna. Es ist möglich, dass es sich hier um eine Priesterin der Iulia Domna handelt, aber nicht sicher.",
             "Literatur": "-",
             "Bild": ""
+          },
+          {
+            "Name": "Iulia (?)",
+            "Priesterinnentitel": "flaminica of Mustis",
+            "Datierung": "222-235 n. Chr.",
+            "Fundort": "Mustis",
+            "Koordinaten": [36.331, 9.150],
+            "Belegstelle": "AE 1968, 588",
+            "Inschriftentext": "Cereri Aug(ustae) sac(rum) pro [salute] / Imp(eratoris) Caes(aris) M(arci) Aureli(i) Severi A[lexandri] / Pii Felicis Aug(usti) [[et Iuliae Mamaeae Aug(ustae)]] / [[matris Aug(usti)]] et senatus et cas[trorum et pa]/triae munus quod Iulia Q(uinti) f(ilia) [--- ho]/nestae memoriae flaminica imi[tata paren]/tes maioresq(ue) suos qui munifici in [patriam] / extiterunt id est C(aium) Iulium C(ai) f(ilium) Cor(nelia) Fe[licem] / Felinianum fl(aminem) perp(etuum) qui statuam Iov[i Victo]/ri in foro posuit patriae suae per decr[etum] / universi ordinis promisit inlata suo [tempo]/re legitima summa honoris et ampliu[s curi]/ae honestiss(imae) Aug(ustae) classi prim(a)e summam p[ecu]/niae dignam ex cuius usuris annuis redac[tis] / omnib(us) annis in perpetuum epularetur t[ri]/buit donoq(ue) dedit epulumq(ue) decedens ob dedi[c(ationem)] / curiis dari iussit Q(uintus) Iulius Felix frater eius / et Iulius Homullus et Iulius Honoratus eius / ab ea statuam adlat(am) statuer(unt) et epulo curiis dato ded(icaverunt)",
+            "Inschriften_Art": "-",
+            "Familie": "sozialer Rang: wahrscheinlich equestrian",
+            "Anmerkung": "genannt werden Severus Alexander (schon als Kaiser, 222 n.Chr.) und dessen Mutter Iulia Mammaea (wahrscheinlich nach 226 n.Chr., da Iulia Mammaea mater Augusti et senatus et castrorum genannt wird)\nneben der summa honoris versprach sie eine Statue für Ceres Augsuta zu Ehren des Alexander Severus und der Iulia Manmaea\nspendete für die Einrichtung eines jährlichen Festessens (epulum)\nstiftete ein epulum für alles curiae zur Weihung des Statue",
+            "Literatur": "Emily Hemelrijk (2013) Women and the Roman City in the Latin West S. 78\nEmily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 502\nEpigraphische Datenbank (verlinkung noch einügen)\nhttp://www.persee.fr/doc/antiq_0770-2817_2006_num_75_1_2593 (ebenso)",
+            "Bild": ""
+          },
+          {
+            "Name": "Maria Lucina",
+            "Priesterinnentitel": "flaminica",
+            "Datierung": "218-222 n.Chr.",
+            "Fundort": "Mustis",
+            "Koordinaten": [36.331, 9.150],
+            "Belegstelle": "CIL 8, 1578",
+            "Inschriftentext": "pro salute Imp(eratoris)] Caes(aris) [[3]] [et [[3]] Aug(usti) matris castr]orum Maria Lucina flam(inica) et L(ucius) Fulvius Kastus Ful/[vianus 3 proc(urator) prov(inciae) Africae tr]act(us) Kart(haginis) et Galliae Narbo[nensis 3 et L(ucius) Fulvius 3] Britanniae inferior(is) fili(i) eius cum ob honor(em) eiusd(em) / [3 promisissent adiectis ex li]beralitate sua amplius HS X[3 n(ummum) 3 fecerunt 3 ob dedicationem sp]ortulis decurionibus et epulis civibus datis",
+            "Inschriften_Art": "-",
+            "Familie": "sozialer Rang: equestrian / decurial\nEhemann: L. Fulvius Kastus Fulvianus ?",
+            "Anmerkung": "stiftete zusammen mit ihren Söhnen einen Tempel zum Wohl des Elegabal oder Alexander Severus und Iulia Soaemias\n10.000 Sesterzen wurder der versprochenen summa honaria zugefügt\naufgrund der Weihung wurden spotuale für die Dekurionen eingerichtet\nepula für die Bürger wurden gegeben",
+            "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 429\nhttps://mondesanciens.revues.org/478\nhttp://www.uni-koeln.de/phil-fak/ifa/zpe/downloads/1988/074pdf/074145.pdf",
+            "Bild": ""
+          },
+          {
+            "Name": "Plautia Ep[]",
+            "Priesterinnentitel": "flaminica perpetua",
+            "Datierung": "2-3 Jh. n. Chr.",
+            "Fundort": "Muzuc",
+            "Koordinaten": [36.195, 9.445],
+            "Belegstelle": "CIL 8, 12067",
+            "Inschriftentext": "[---] | Plautiae Ep[---] | quae ob hon(orem) flam(oni) [p(er)p(etui)] | aedem a solo c[um] | statuis ex HS X[--] m(ilibus) n(ummum) | promiserat Plau|ti Faustus et Auge | her(edes) ampl(iata) pecun(ia) | perfecerunt.",
+            "Inschriften_Art": "-",
+            "Familie": "-",
+            "Anmerkung": "versprach für 10.000 Sesterzen den Bau eines Tempels (aedes) mit Statuen",
+            "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 405",
+            "Bild": ""
           }
         ];
 
@@ -379,6 +596,9 @@
             .then(data => {
                 if(data) L.geoJSON(data, { style: { color: "#8b0000", weight: 1.5, fillColor: "#e6e1d1", fillOpacity: 0.4 } }).addTo(map);
             }).catch(e => console.log("AWMC GeoJSON blockiert in Vorschau-Umgebung."));
+
+        // Globales Array für Marker-Verwaltung (Zeitleisten-Filter)
+        const allMarkers = [];
 
         // Marker setzen
         if (typeof priesterinnenData !== 'undefined') {
@@ -400,6 +620,55 @@
                         try { showDetails(priesterin); } 
                         catch (e) { console.error("Fehler bei Anzeige:", e); }
                     });
+
+                    // Marker im Array speichern für spätere Filterung
+                    allMarkers.push({ marker: marker, data: priesterin });
+                }
+            });
+        }
+
+        // --- FILTER LOGIK (TOOLBOX & ZEITLEISTE) ---
+        function toggleTimeline() {
+            document.getElementById('timeline-container').classList.toggle('active');
+        }
+
+        function updateSliderFilter(val) {
+            val = parseInt(val);
+            const mapping = ['all', '1', '2', '3', 'unknown'];
+            const targetCentury = mapping[val];
+
+            // Aktive Labels visuell updaten
+            const labels = document.getElementById('slider-labels').children;
+            for(let i = 0; i < labels.length; i++) {
+                if(i === val) {
+                    labels[i].classList.add('active-label');
+                } else {
+                    labels[i].classList.remove('active-label');
+                }
+            }
+
+            // Geöffnete Sidebars schließen, um Inkonsistenzen zu vermeiden
+            closeSidebar();
+            closeLightbox();
+
+            allMarkers.forEach(item => {
+                const datierung = item.data.Datierung || "";
+                let show = false;
+
+                if (targetCentury === 'all') {
+                    show = true;
+                } else if (targetCentury === 'unknown') {
+                    // "Unbekannt" oder "-" enthalten typischerweise keine Ziffern
+                    if (!datierung.match(/\d/)) show = true;
+                } else {
+                    // Sucht nach der Ziffer des Jahrhunderts im Datierungs-String
+                    if (datierung.includes(targetCentury)) show = true;
+                }
+
+                if (show) {
+                    if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
+                } else {
+                    if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
                 }
             });
         }
