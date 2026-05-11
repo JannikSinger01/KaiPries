@@ -6,13 +6,16 @@
     <title>KaiPries - Kaiserpriesterinnen im antiken Rom</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Neu: MarkerCluster & Heatmap Bibliotheken -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 
     <style>
         :root {
             --primary-color: #8b0000;
             --bg-color: #f4f1ea;
             --text-color: #2c2c2c;
-            --sidebar-width: 480px; /* Breite der Leisten auf 480px erhöht */
+            --sidebar-width: 480px; 
         }
 
         * {
@@ -132,6 +135,7 @@
             font-size: 1.5rem; 
             cursor: pointer; 
             color: #666;
+            line-height: 1;
         }
 
         .sidebar-content {
@@ -256,7 +260,7 @@
             padding: 15px;
             border-radius: 4px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 999; /* Unter der Sidebar */
+            z-index: 999; 
         }
 
         .legend-box h3 {
@@ -294,19 +298,18 @@
             margin-right: 10px;
         }
 
-        /* --- TOOLBOX & ZEITLEISTE --- */
-        .toolbox {
+        /* --- TOOLBOX (Button & Dropdown Oben Rechts) --- */
+        .toolbox-wrapper {
             position: absolute;
             top: 20px; 
             right: 20px;
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 999;
+            z-index: 1001; /* Muss über allem anderen liegen */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
         }
 
-        .toolbox button {
+        .toolbox-btn {
             background: var(--bg-color);
             border: 1px solid #ccc;
             padding: 8px 12px;
@@ -317,35 +320,295 @@
             font-weight: bold;
             color: var(--text-color);
             transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        .toolbox button:hover {
+        .toolbox-btn:hover {
             background: #e2dfd8;
         }
 
-        #timeline-container {
+        .toolbox-menu {
+            display: none;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-top: 5px;
+            flex-direction: column;
+            min-width: 180px;
+            overflow: hidden;
+        }
+
+        .toolbox-menu.active {
+            display: flex;
+        }
+
+        .toolbox-menu button {
+            background: none;
+            border: none;
+            border-bottom: 1px solid #eee;
+            padding: 10px 15px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            color: var(--text-color);
+            transition: background 0.2s;
+        }
+
+        .toolbox-menu button:last-child {
+            border-bottom: none;
+        }
+
+        .toolbox-menu button:hover {
+            background: #f4f1ea;
+        }
+
+        /* --- ZENTRALES TOOL-PANEL (Obere Mitte) --- */
+        #filter-container {
             position: absolute;
-            top: 110px; /* Abstand vergrößert, um Überlappung mit der Titel-Box zu verhindern */
+            top: 110px; 
             left: 50%;
             transform: translateX(-50%);
             background: white;
-            padding: 10px 15px;
+            padding: 20px;
             border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             z-index: 1000;
-            display: none; /* Initial versteckt */
+            display: none; 
             flex-direction: column;
-            align-items: flex-start;
-            min-width: 350px;
+            gap: 15px;
+            width: 400px;
+            max-height: 75vh;
+            overflow-y: auto;
         }
 
-        #timeline-container.active {
+        #filter-container.active {
             display: flex;
+        }
+
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        .tool-header h3 {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+
+        /* --- TABELLEN ANSICHT --- */
+        #table-view-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            z-index: 500; /* Über der Karte, unter den Tool-Modals */
+            display: none;
+            padding: 90px 20px 20px 20px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 0.9rem;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .data-table th {
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            user-select: none;
+        }
+
+        .data-table th:hover {
+            background-color: #6b0000;
+        }
+
+        .data-table tr:hover {
+            background-color: #f9f8f5;
+        }
+
+        .close-table-btn {
+            background: white;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .close-table-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* --- TUTORIAL MODAL --- */
+        #tutorial-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #tutorial-overlay.active {
+            display: flex;
+        }
+
+        .tutorial-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 4px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-top: 4px solid var(--primary-color);
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .tutorial-content h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        .tutorial-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tutorial-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .tutorial-section h3 {
+            font-size: 1.05rem;
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tutorial-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .tutorial-close-btn:hover {
+            color: var(--primary-color);
+        }
+
+        /* --- AKKORDEON STRUKTUR FÜR TOOLS --- */
+        .accordion-btn {
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 10px 15px;
+            width: 100%;
+            text-align: left;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            font-weight: bold;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .accordion-btn:hover {
+            background-color: #e2dfd8;
+        }
+
+        .accordion-btn::after {
+            content: '\25BC'; 
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .accordion-btn.active::after {
+            content: '\25B2'; 
+        }
+
+        .accordion-content {
+            display: none;
+            padding: 15px 5px 5px 5px;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .accordion-content.active {
+            display: flex;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .filter-group input[type="text"],
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            width: 100%;
         }
 
         .slider-wrapper {
             width: 100%;
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
         .timeline-slider {
@@ -413,22 +676,94 @@
             </div>
         </div>
 
-        <!-- TOOLBOX OBERHALB -->
-        <div class="toolbox">
-            <button onclick="toggleTimeline()">⚙️ Filter / Tools</button>
+        <!-- TOOLBOX (Button & Dropdown Oben Rechts) -->
+        <div class="toolbox-wrapper">
+            <div style="display: flex; gap: 10px;">
+                <button class="toolbox-btn" onclick="openTutorial()">❓ Anleitung</button>
+                <button class="toolbox-btn" onclick="toggleToolboxMenu()">⚙️ Toolbox</button>
+            </div>
+            <div class="toolbox-menu" id="toolbox-menu">
+                <button onclick="openCenterTool('filter-container')">🔍 Suche & Filter</button>
+                <button onclick="toggleTableView()">📊 Tabellen-Ansicht</button>
+            </div>
         </div>
 
-        <!-- ZEITLEISTE UNTERHALB DER TITEL-BOX -->
-        <div id="timeline-container">
-            <span style="font-size: 0.85rem; font-weight: bold;">Datierung filtern:</span>
-            <div class="slider-wrapper">
-                <input type="range" min="0" max="4" value="0" class="timeline-slider" id="century-slider" oninput="updateSliderFilter(this.value)">
-                <div class="slider-labels" id="slider-labels">
-                    <span class="active-label">Alle</span>
-                    <span>1. Jh.</span>
-                    <span>2. Jh.</span>
-                    <span>3. Jh.</span>
-                    <span>Unbekannt</span>
+        <!-- TABELLEN-ANSICHT CONTAINER -->
+        <div id="table-view-container">
+            <button class="close-table-btn" onclick="toggleTableView()">✖ Zurück zur Karte</button>
+            <table class="data-table" id="data-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('Name')">Name <span id="sort-ind-Name"></span></th>
+                        <th onclick="sortTable('Priesterinnentitel')">Titel <span id="sort-ind-Priesterinnentitel"></span></th>
+                        <th onclick="sortTable('Provinz')">Provinz <span id="sort-ind-Provinz"></span></th>
+                        <th onclick="sortTable('Fundort')">Fundort <span id="sort-ind-Fundort"></span></th>
+                        <th onclick="sortTable('Datierung')">Datierung <span id="sort-ind-Datierung"></span></th>
+                        <th onclick="sortTable('Belegstelle')">Belegstelle <span id="sort-ind-Belegstelle"></span></th>
+                        <th onclick="sortTable('Inschriftentext')">Textauszug <span id="sort-ind-Inschriftentext"></span></th>
+                    </tr>
+                </thead>
+                <tbody id="data-table-body">
+                    <!-- Wird dynamisch befüllt -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ZENTRALES TOOL-PANEL (öffnet sich nach Auswahl im Toolbox-Menu) -->
+        <div id="filter-container">
+            <div class="tool-header">
+                <h3>Suche & Filter</h3>
+                <button class="close-btn" onclick="closeCenterTool('filter-container')">&times;</button>
+            </div>
+
+            <!-- Akkordeon: Suche -->
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'acc-suche')">Volltextsuche</button>
+            <div class="accordion-content" id="acc-suche">
+                <div class="filter-group">
+                    <input type="text" id="search-filter" placeholder="Suchbegriff (z.B. Name, CIL, Ceres)..." oninput="applyFilters()">
+                </div>
+            </div>
+
+            <!-- Akkordeon: Kategorien & Region -->
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'acc-kategorien')">Kategorien & Region</button>
+            <div class="accordion-content" id="acc-kategorien">
+                <div class="filter-group">
+                    <label for="prov-filter">Provinz / Region:</label>
+                    <select id="prov-filter" onchange="applyFilters()">
+                        <option value="all">Alle Provinzen</option>
+                        <option value="unknown">Unbekannt</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="art-filter">Inschriftenart:</label>
+                    <select id="art-filter" onchange="applyFilters()">
+                        <option value="all">Alle Arten</option>
+                        <option value="unknown">Unbekannt</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="titel-filter">Priesterinnentitel:</label>
+                    <select id="titel-filter" onchange="applyFilters()">
+                        <option value="all">Alle Titel</option>
+                        <option value="unknown">Unbekannt</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Akkordeon: Datierung -->
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'acc-datierung')">Datierung filtern</button>
+            <div class="accordion-content" id="acc-datierung">
+                <div class="filter-group">
+                    <div class="slider-wrapper">
+                        <input type="range" min="0" max="4" value="0" class="timeline-slider" id="century-slider" oninput="applyFilters()">
+                        <div class="slider-labels" id="slider-labels">
+                            <span class="active-label">Alle</span>
+                            <span>1. Jh.</span>
+                            <span>2. Jh.</span>
+                            <span>3. Jh.</span>
+                            <span>Unbek.</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -468,6 +803,7 @@
             
             <div class="sidebar-content" id="sidebar-data" style="display: none;">
                 <div class="data-group"><span class="data-label">Fundort</span><div class="data-value" id="detail-fundort">-</div></div>
+                <div class="data-group"><span class="data-label">Provinz</span><div class="data-value" id="detail-provinz">-</div></div>
                 <div class="data-group"><span class="data-label">Datierung</span><div class="data-value" id="detail-datierung">-</div></div>
                 <div class="data-group"><span class="data-label">Priesterinnentitel</span><div class="data-value" id="detail-titel" style="font-weight: bold; color: var(--primary-color);">-</div></div>
                 <div class="data-group"><span class="data-label">Familie</span><div class="data-value" id="detail-familie">-</div></div>
@@ -487,19 +823,49 @@
             <button id="lightbox-close">&times;</button>
             <img id="lightbox-img" src="" alt="Vergrößertes Epigraph">
         </div>
+
+        <!-- TUTORIAL OVERLAY -->
+        <div id="tutorial-overlay" onclick="closeTutorialOutside(event)">
+            <div class="tutorial-content">
+                <button class="tutorial-close-btn" onclick="closeTutorial()">&times;</button>
+                <h2>Kurzanleitung: KaiPries Web-App</h2>
+                
+                <div class="tutorial-section">
+                    <h3>📍 1. Interaktive Karte & Stecknadeln</h3>
+                    <p>Die Karte zeigt die antiken Fundorte der epigraphischen Belege. Ein Klick auf eine rote Stecknadel öffnet die dazugehörigen Forschungsdaten. <br><i>Hinweis:</i> Stammen mehrere Inschriften vom exakt selben Fundort, werden die Nadeln optisch leicht versetzt dargestellt, damit sie einzeln anwählbar bleiben.</p>
+                </div>
+
+                <div class="tutorial-section">
+                    <h3>📖 2. Epigraphische Detailansicht</h3>
+                    <p>Sobald eine Stecknadel angewählt wird, öffnen sich zwei Seitenleisten. Die <b>linke Leiste</b> zeigt Abbildungen und die Literatur-Belegstelle. Die <b>rechte Leiste</b> enthält die Transkription des Inschriftentextes, Datierungen und prosopographische Notizen.</p>
+                </div>
+
+                <div class="tutorial-section">
+                    <h3>⚙️ 3. Toolbox & Filter</h3>
+                    <p>Über das Dropdown-Menü <i>Toolbox</i> rechts oben erreichst du die Filter. Hier kannst du eine Volltextsuche durchführen oder die Datenlage nach Provinzen, Inschriftenart, Priesterinnentitel und Jahrhundert eingrenzen. Alle Filter sind miteinander kombinierbar. Die Karte passt sich in Echtzeit an und zentriert sich automatisch auf die ausgewählte Region.</p>
+                </div>
+
+                <div class="tutorial-section">
+                    <h3>📊 4. Tabellen-Ansicht</h3>
+                    <p>Ebenfalls über die Toolbox aufrufbar. Diese Ansicht blendet die Karte aus und stellt alle aktuell gefilterten Datensätze in einer Übersicht dar. Ein Klick auf die jeweiligen Spaltenüberschriften sortiert die Daten alphabetisch auf- oder absteigend.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Plugins laden -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
     <script>
-        // DATENBLOCK: Für die Vorschau hier fest integriert. 
-        // Für GitHub: Lösche diesen Block und nutze stattdessen <script src="js/priesterinnen.js">
+        // DATENBLOCK mit neuem Attribut "Provinz"
         const priesterinnenData = [
           {
             "Name": "Honoratia",
             "Priesterinnentitel": "flamincae divae Liviae (? Evt. Auch Iuliae?)",
             "Datierung": "1. Jh. ?",
             "Fundort": "Hippo Regius",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.8989, 7.7533],
             "Belegstelle": "AE 1958, 144",
             "Inschriftentext": "[1 Au]relio Q(uinti) fil(io) Quir(ina) Honorato / [flamini A]ug(usti) p(er)p(etuo) omnibus honoribus functo / [ob insigne]m in cives amorem et ob honestissi/[mam egregiamq]ue eius liberalitatem quo testa/[mento dedit illatis(?) HS] C mil(ibus) in die natali Mariae / [3 Honora]tianae(?) uxoris suae flami/[nicae divae Liv]iae(?) perpetuo decurio/[nibus item curiis omnibus] et Augustalibus epula/[3]RIA[3 cl]ar[i]ssim[us ordo] et populus Hipponiensis / [3] ex [3 sp]ortulas [et] at referendam memoriae / [statuam decreverunt item 3]F AN[3]RASTAR[3 et Ma]riae(?) Saturninae uxori eius / [3]VR[3]IA[3] et quae honor(e) content[(a) s(ua) p(ecunia) p(osuit?)]",
@@ -514,6 +880,7 @@
             "Priesterinnentitel": "flaminica perpetua Lepititanae",
             "Datierung": "2 Jh. n. Chr.",
             "Fundort": "Leptis Minor",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [35.671, 10.879],
             "Belegstelle": "CIL 8, 22902",
             "Inschriftentext": "Marcia Sex(ti) f(iliae) / Pompeianae / Caesariensi M(arci) No/ni Capitonis fla/minicae perp(etuae) Lep/titanae optimae / femiae / M(arcus) Caecilius Lurianus / et P(ublius) Postumius M[a]rianus",
@@ -528,6 +895,7 @@
             "Priesterinnentitel": "sacerdos",
             "Datierung": "-",
             "Fundort": "Mactaris",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [35.856, 9.206],
             "Belegstelle": "CIL 8, 23405",
             "Inschriftentext": "Veneri Aug(ustae) [sacr(um)] / pro salute et incolumita[te] / Im(peratoris) Caes(aris) L(uci) Septimi Seve/ri Pii Perinnacis / Aug(usti) p(atris) p(atriae) et / Im(peratoris) Caes(aris) M(arci) Aureli Anto/nini Aug(usti) princip[i] / [[6]] / [[C(a)esaris]] et Iu[liae] / dom[nae] matris [Augg(ustrorum)] / et castro[r(um) et patriae] / Terentia Sp[3]ra[3] / sacerdos [3] / v(otum) s(olvit) l(ibens) m(erito)",
@@ -542,6 +910,7 @@
             "Priesterinnentitel": "flaminica of Mustis",
             "Datierung": "222-235 n. Chr.",
             "Fundort": "Mustis",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.331, 9.150],
             "Belegstelle": "AE 1968, 588",
             "Inschriftentext": "Cereri Aug(ustae) sac(rum) pro [salute] / Imp(eratoris) Caes(aris) M(arci) Aureli(i) Severi A[lexandri] / Pii Felicis Aug(usti) [[et Iuliae Mamaeae Aug(ustae)]] / [[matris Aug(usti)]] et senatus et cas[trorum et pa]/triae munus quod Iulia Q(uinti) f(ilia) [--- ho]/nestae memoriae flaminica imi[tata paren]/tes maioresq(ue) suos qui munifici in [patriam] / extiterunt id est C(aium) Iulium C(ai) f(ilium) Cor(nelia) Fe[licem] / Felinianum fl(aminem) perp(etuum) qui statuam Iov[i Victo]/ri in foro posuit patriae suae per decr[etum] / universi ordinis promisit inlata suo [tempo]/re legitima summa honoris et ampliu[s curi]/ae honestiss(imae) Aug(ustae) classi prim(a)e summam p[ecu]/niae dignam ex cuius usuris annuis redac[tis] / omnib(us) annis in perpetuum epularetur t[ri]/buit donoq(ue) dedit epulumq(ue) decedens ob dedi[c(ationem)] / curiis dari iussit Q(uintus) Iulius Felix frater eius / et Iulius Homullus et Iulius Honoratus eius / ab ea statuam adlat(am) statuer(unt) et epulo curiis dato ded(icaverunt)",
@@ -556,6 +925,7 @@
             "Priesterinnentitel": "flaminica",
             "Datierung": "218-222 n.Chr.",
             "Fundort": "Mustis",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.331, 9.150],
             "Belegstelle": "CIL 8, 1578",
             "Inschriftentext": "pro salute Imp(eratoris)] Caes(aris) [[3]] [et [[3]] Aug(usti) matris castr]orum Maria Lucina flam(inica) et L(ucius) Fulvius Kastus Ful/[vianus 3 proc(urator) prov(inciae) Africae tr]act(us) Kart(haginis) et Galliae Narbo[nensis 3 et L(ucius) Fulvius 3] Britanniae inferior(is) fili(i) eius cum ob honor(em) eiusd(em) / [3 promisissent adiectis ex li]beralitate sua amplius HS X[3 n(ummum) 3 fecerunt 3 ob dedicationem sp]ortulis decurionibus et epulis civibus datis",
@@ -570,6 +940,7 @@
             "Priesterinnentitel": "flaminica perpetua",
             "Datierung": "2-3 Jh. n. Chr.",
             "Fundort": "Muzuc",
+            "Provinz": "Africa Proconsularis",
             "Koordinaten": [36.195, 9.445],
             "Belegstelle": "CIL 8, 12067",
             "Inschriftentext": "[---] | Plautiae Ep[---] | quae ob hon(orem) flam(oni) [p(er)p(etui)] | aedem a solo c[um] | statuis ex HS X[--] m(ilibus) n(ummum) | promiserat Plau|ti Faustus et Auge | her(edes) ampl(iata) pecun(ia) | perfecerunt.",
@@ -577,6 +948,141 @@
             "Familie": "-",
             "Anmerkung": "versprach für 10.000 Sesterzen den Bau eines Tempels (aedes) mit Statuen",
             "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 405",
+            "Bild": ""
+          },
+          {
+            "Name": "Iunia Saturnina",
+            "Priesterinnentitel": "flaminica",
+            "Datierung": "168-170 n.Chr.",
+            "Fundort": "Numluis",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.438, 9.176],
+            "Belegstelle": "CIL 8, 26121",
+            "Inschriftentext": "[I]ovi Optimo Maximo Iunoni Reginae Minervae Augustae sacrum. | [P]ro salute Imp(eratoris) Caes(aris) M. Aureli Antonini Aug(usti) Armeniaci Medici Part(hici) max(imi) pont(ificis) max(imi) trib(unicia) pot(estate) XXIIII imp(eratoris) V co(n)s(ulis) III p(atris) p(atriae) liberorumq(ue) eius totiusque domus divinae | [L.] Memmius Pecuarius Marcellinus cum suo et L. Memmi Marcelli Pecuariani decurionis c(oloniae) I(uliae) K(arthaginis) flaminis divi Nervae designati filii sui nomine templum Capitoli liberalitate sua | [f]aciendu[m] ex HS XX mil(ibus) n(ummum) patriae suae pago et civitati Numlulitanae promisisset et ob honorem flamoni Iuniae Saturninae uxoris suae ex decreto utriusque ordinis HS IIII m(ilia) n(ummum) in id | opus [e]rogass[et] multiplicata pecunia solo suo extruxit et marmoribus et statuis omnique cultu exornavit itemq(ue) dedicavit ob quam dedicationem decurionibus utriusq(ue) ordinis sportulas | item populo epulum et gymnasium dedit praeterea exigente annona frumenta quantacumq(ue) habuit populo multo minore pretio quam tunc erat benignissime praestitit item ludos scaenicos et gymnasia adsidue dedit.",
+            "Inschriften_Art": "-",
+            "Familie": "sozialer Rang: decurial(?)",
+            "Anmerkung": "ob honorem flamonii der Iunia versprach ihr Ehemann neben 20.000 Sesterzen für einen Tempelbau weitere 40.000 Sesterzen",
+            "Literatur": "Monica Hellström (2014) Public Construction under Diocletian\nA Study of State Involvement in Construction in Roman Era Towns in Present Day Tunisia and Eastern Algeria. https://academiccommons.columbia.edu/catalog/ac:168945\nhttp://www.persee.fr/docAsPDF/mefr_0223-5102_1989_num_101_1_1638.pdf\nhttps://cdr.lib.unc.edu/indexablecontent/uuid:e8dc95ad-4b89-45cb-9fec-6ae64eca8bff",
+            "Bild": ""
+          },
+          {
+            "Name": "Iunia Saturnina",
+            "Priesterinnentitel": "flaminica",
+            "Datierung": "168-170 n.Chr.",
+            "Fundort": "Ammaedara",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [35.566, 8.455],
+            "Belegstelle": "CIL 8, Suppl. 4, 23272 (?)",
+            "Inschriftentext": "D(iis) M(anibus) S(acrum).|M(arcus) Marius Rusti|-cus uix(it) annis XX. Iu|-nia Saturnina| filio pio posuit. H(ic) s(itus) e(st).   D(iis) M(anibus) S(acrum).|M(arcus) Marius Mal|-cio uix(it) annis L.| Iunia Saturnina| Conjugi pio posuit. H(ic) s(itus) e(st).",
+            "Inschriften_Art": "-",
+            "Familie": "Ehemann: Memmius Pecuarius Marcellinus (?)",
+            "Anmerkung": "-",
+            "Literatur": "https://sites.google.com/site/necropolesammaedara/cimetiere-militaire/p10100129",
+            "Bild": ""
+          },
+          {
+            "Name": "Gar(gilia) Fortuna",
+            "Priesterinnentitel": "flaminica perpetua",
+            "Datierung": "-",
+            "Fundort": "Segermes",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.331, 10.297],
+            "Belegstelle": "CIL 8, 11178",
+            "Inschriftentext": "] suam e/[i]usque civibus suis in m[e]/[m]o[r]iam pr(a)estiterunt / Gar() Fortunata fl(aminica) p(erpetua) eiusd(em) / munic(ipii) in solacium amissi karis/simi mariti hanc statuam pe/cunia sua posuit l(ocus) d(atus) d(ecreto) d(ecurionum)",
+            "Inschriften_Art": "Grabinschrift (?)",
+            "Familie": "-",
+            "Anmerkung": "anscheinend hat sie ihrem verstorbenen Ehemann und der Gemeinde eine Statue errichtet , Ort wurde genehmigt",
+            "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 402 (?)\nhttps://www.academia.edu/10307673/_Manus_lanis_occupate.._._Femmes_et_métiers_en_Afrique S. 115",
+            "Bild": ""
+          },
+          {
+            "Name": "Quinta",
+            "Priesterinnentitel": "flaminica perpetua",
+            "Datierung": "146 n.Chr.",
+            "Fundort": "Sutunurca",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.402, 10.156],
+            "Belegstelle": "AE 1910, 154",
+            "Inschriftentext": "-",
+            "Inschriften_Art": "-",
+            "Familie": "-",
+            "Anmerkung": "-",
+            "Literatur": "-",
+            "Bild": ""
+          },
+          {
+            "Name": "Valeria Celerina",
+            "Priesterinnentitel": "sacerdos coloniae",
+            "Datierung": "-",
+            "Fundort": "Thaenae",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [34.644, 10.673],
+            "Belegstelle": "CIL 8, 22797",
+            "Inschriftentext": "Dis Manibus / Valeria Cele/(r)ina Rustici / Gergos filia sa/cerdos col(oniae) Thae/nitanae vix(it) / annis LXXV",
+            "Inschriften_Art": "Grabinschrift",
+            "Familie": "Vater: Rusticus aus der Tribus Gergos",
+            "Anmerkung": "starb mit 75",
+            "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 335",
+            "Bild": ""
+          },
+          {
+            "Name": "Flavia Pacata",
+            "Priesterinnentitel": "flaminica perpetua (colonia Theleptae)",
+            "Datierung": "150 - 175 n. Chr.",
+            "Fundort": "Thelepta",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [34.956, 8.573],
+            "Belegstelle": "CIL 8, 211",
+            "Inschriftentext": "T(itus) Flavius Se/cundus filius / fecit / T(ito) Flavio Secun/do patri pio / mil(itavit) an(nos) XXXIII / vixit an(nos) CX h(ic) s(itus) e(st) / Flaviae Urbanae / matri piae vix(it) / an(nos) CV h(ic) s(ita) e(st) / Fl(aviae) Secundae so/rori p(iae) v(ixit) a(nnos) XX h(ic) s(ita) e(st) / T(ito) Fl(avio) Marcello fra/tri p(io) v(ixit) a(nnos) XX h(ic) s(itus) e(st) / T(ito) Fl(avio) Martiali fratr/i mil(itavit) a(nnos) XII v(ixit) a(nnos) XXXV h(ic) s(itus) e(st) / Fl(aviae) Speratae soro/ri p(iae) v(ixit) a(nnos) XXXVI / h(ic) s(ita) e(st) / Aemiliae Sex(ti) fi(liae) / Pacatae uxori piae / flaminicae perp(etuae) / vix(it) an(nos) LIII h(ic) s(ita) e(st) / T(itus) Fl(avius) T(iti) filius / Pap(iria) Secundus ipse / flamen perp(etuus) vix(it) / an(nos) LX h(ic) s(itus) e(st) / Fl(aviae) T(iti) filiae Pacatae fla/minicae perp(etuae) col(oniae) The/lept(ae) fil(iae) piae Fl(avia) Libera ma/ter statuam posuit / v(ixit) a(nnos) XV m(enses) X h(ic) s(ita) e(st) / F(lavia) Libera T(iti) Fl(avi) Secundi / uxor pia vix(it) an(nos) LXXXVIII / h(ic) s(ita) e(st)",
+            "Inschriften_Art": "Grabinschrift",
+            "Familie": "Vater:  Titus Flavius /Secundus) Papirius; Mutter: Flavia Libera",
+            "Anmerkung": "filiae piae; lebte 15 Jahre, 10 Monate; abweichender Fundort ? Gasrin / Gillium",
+            "Literatur": "https://books.google.de/books?id=i9mJAgAAQBAJ&pg=PA221&lpg=PA221&dq=CIL+8+211+Flavia+pacata&source=bl&ots=OiicrkLEk7&sig=D11WWu0k92gGeap-rpEqpy9w8RE&hl=de&sa=X&ved=0ahUKEwiK54DCr9TTAhVMjCwKHfOWD8EQ6AEIJzAB#v=onepage&q=CIL%208%20211%20Flavia%20pacata&f=false\nhttp://www.fschuppisser.ch/cillium/cillium_grabmal.html\nEmily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 397\nhttp://www.persee.fr/doc/antiq_0770-2817_2005_num_74_1_2568",
+            "Bild": ""
+          },
+          {
+            "Name": "Iulia Candida",
+            "Priesterinnentitel": "flaminica perpetua",
+            "Datierung": "-",
+            "Fundort": "Tabursuq",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.458, 9.248],
+            "Belegstelle": "CIL 8, 26071",
+            "Inschriftentext": "D(is) M(anibus) s(acrum) / L(ucius) Volum/nius Ho/noratus / p(ater) f(lamen) p(erpetuus) p(ius) vixit / an(n)is LXXI / h(ic) s(itus) <e=F>(st) // D(is) M(anibus) s(acrum) / Iulia Ca/ndida / f(laminica) p(erpetua) p(ia) vixit / annis / LXV / h(ic) s(ita) e(st)",
+            "Inschriften_Art": "Grabinschrift",
+            "Familie": "Ehemann: Lucius Volumnius Honoratus, flamen pertetuus , Vater 71 Jahre",
+            "Anmerkung": "Iulia Candida wurde 65 Jahre",
+            "Literatur": "-",
+            "Bild": ""
+          },
+          {
+            "Name": "Caecilia Faustina",
+            "Priesterinnentitel": "flaminica perpetua",
+            "Datierung": "254-268 n. Chr.",
+            "Fundort": "Thignica",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.524, 9.129],
+            "Belegstelle": "AE 2006, 1762",
+            "Inschriftentext": "Neptuno Augusto sacrum / pro salute [[Imp(eratoris) Caes(aris) P(ubli) Licini Gallieni Pii Fel(icis) Aug(usti) p(ontificis) m(aximi)]] / [[Dacici max(imi) Germ[a]nici max(imi) Persici max(imi) trib(unicia) pot(estate) XIII]] / [[imp(eratoris) XII co(n)s(ulis) VI p(atris) p(atriae) proco(n)s(ulis) et Corneliae Saloninae Aug(usti) coniugis Aug(usti) n(ostri) totiusque domus divinae eorum]] / P(ublius) Valerius L(uci) fil(ius) Pap(iria) Victor Numisianus Sallustianus eq(ues) R(omanus) aedilic(ius) IIviral(icius) XIpr(imus) fl(amen) perp(etuus) opus fontis [3] quod Valerius Tertullianus pater eius / ob summam flam(onii) perpetui sui itemq(ue) Caeciliae Faustinae matris suae f(laminicae) p(erpetuae) ex HS LIIII mil(ibus) n(ummum) facturum se promi[serat supra legitima]m taxationem podium [ae]num(?) mod[o] eiu[s] / exstruxerat quodq(ue) idem Numisianus ob honorem flamonii sui perp(etui) ex HS XXX mil(ibus) n(ummum) experitu[r]um se pollicitus [erat ampli]ata pacunia aedem [3]um",
+            "Inschriften_Art": "Stiftung",
+            "Familie": "Ehemann: Valerius Tertullianus; Sohn: Publius Valerius",
+            "Anmerkung": "Vater und Sohn beide flamen perpetuus",
+            "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West. S. 395\nhttp://www.altegeschichte.uni-osnabrueck.de/corneliasalonina/inschriften.pdf",
+            "Bild": ""
+          },
+          {
+            "Name": "Herennia Quarta",
+            "Priesterinnentitel": "flaminica perpetua",
+            "Datierung": "3. Jh. n. Chr. ?",
+            "Fundort": "Thisiduo",
+            "Provinz": "Africa Proconsularis",
+            "Koordinaten": [36.6, 9.2],
+            "Belegstelle": "CIL 8, 1271",
+            "Inschriftentext": "-",
+            "Inschriften_Art": "Stiftung",
+            "Familie": "sozialer Rang: equestrian",
+            "Anmerkung": "stiftete eine Statue für Kaiser; ihr wurde eine Statue aufgestellt; vgl. mit Herennia (CIL 8 17183)",
+            "Literatur": "Emily Hemelrijk (2015) Hidden Lives, Public Personae: Women and Civic Life in the Roman West.\nWerner Eck . Senatores populi Romani S. 196\nhttp://www.persee.fr/docAsPDF/mefr_0223-5102_1990_num_102_2_1686.pdf",
             "Bild": ""
           }
         ];
@@ -597,22 +1103,87 @@
                 if(data) L.geoJSON(data, { style: { color: "#8b0000", weight: 1.5, fillColor: "#e6e1d1", fillOpacity: 0.4 } }).addTo(map);
             }).catch(e => console.log("AWMC GeoJSON blockiert in Vorschau-Umgebung."));
 
-        // Globales Array für Marker-Verwaltung (Zeitleisten-Filter)
+        // Globales Array für Marker-Verwaltung und Ebenen
         const allMarkers = [];
+        const markersLayer = L.featureGroup(); // Ersetzt das Cluster-Plugin
+
+        let currentProvinceFilter = "all"; // State-Tracker für Karten-Zentrierung
+        
+        // Tabellen-State
+        let currentFilteredData = [];
+        let isTableViewActive = false;
+        let currentSortColumn = 'Name';
+        let sortAscending = true;
+
+        // Funktion: Dropdowns dynamisch aus Daten füllen
+        function populateDropdowns() {
+            const provSet = new Set();
+            const artSet = new Set();
+            const titelSet = new Set();
+
+            priesterinnenData.forEach(d => {
+                if (d.Provinz && d.Provinz !== '-') provSet.add(d.Provinz);
+                if (d.Inschriften_Art && d.Inschriften_Art !== '-') artSet.add(d.Inschriften_Art);
+                if (d.Priesterinnentitel && d.Priesterinnentitel !== '-') titelSet.add(d.Priesterinnentitel);
+            });
+
+            const provSelect = document.getElementById('prov-filter');
+            provSet.forEach(val => provSelect.add(new Option(val, val)));
+
+            const artSelect = document.getElementById('art-filter');
+            artSet.forEach(val => artSelect.add(new Option(val, val)));
+
+            const titelSelect = document.getElementById('titel-filter');
+            titelSet.forEach(val => titelSelect.add(new Option(val, val)));
+        }
 
         // Marker setzen
         if (typeof priesterinnenData !== 'undefined') {
+            populateDropdowns();
+
+            const coordTracker = {}; // Speichert die Häufigkeit exakter Koordinaten
+
             priesterinnenData.forEach(priesterin => {
                 if (priesterin.Koordinaten && priesterin.Koordinaten.length === 2) {
-                    const marker = L.circleMarker(priesterin.Koordinaten, {
-                        radius: 8, 
-                        fillColor: "#8b0000", 
-                        color: "#ffffff", 
-                        weight: 2, 
-                        opacity: 1, 
-                        fillOpacity: 1,
-                        pane: 'markerPane' // Erwingt, dass der Punkt ÜBER den GeoJSON-Flächen liegt
-                    }).addTo(map);
+                    
+                    let lat = priesterin.Koordinaten[0];
+                    let lng = priesterin.Koordinaten[1];
+                    const coordKey = `${lat}_${lng}`;
+
+                    let overlapIndex = 0;
+
+                    // Optischen Versatz-Index bei überlagernden Koordinaten ermitteln
+                    if (coordTracker[coordKey]) {
+                        overlapIndex = coordTracker[coordKey];
+                        coordTracker[coordKey]++;
+                    } else {
+                        coordTracker[coordKey] = 1;
+                    }
+
+                    // Fester Pixel-Versatz (unabhängig vom Zoom): 
+                    // 10px nach rechts (bei 16px Breite = ca. 50% Überlappung) und 2px nach unten für Tiefenwirkung
+                    const xShift = overlapIndex * 10;
+                    const yShift = overlapIndex * 2;
+
+                    const customIcon = L.divIcon({
+                        className: '', // Verhindert Leaflet-Standard-Rahmen
+                        html: `<div style="
+                            width: 16px; 
+                            height: 16px; 
+                            background-color: #8b0000; 
+                            border: 2px solid #ffffff; 
+                            border-radius: 50%; 
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+                        "></div>`,
+                        iconSize: [16, 16],
+                        // Der Anker [8,8] ist das Zentrum. Wir verschieben den Anker, um das Icon optisch zu versetzen.
+                        iconAnchor: [8 - xShift, 8 - yShift] 
+                    });
+
+                    // Nutzung von L.marker statt L.circleMarker für die Pixel-genaue Kontrolle
+                    const marker = L.marker([lat, lng], {
+                        icon: customIcon 
+                    }); 
 
                     marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
 
@@ -621,60 +1192,157 @@
                         catch (e) { console.error("Fehler bei Anzeige:", e); }
                     });
 
-                    // Marker im Array speichern für spätere Filterung
                     allMarkers.push({ marker: marker, data: priesterin });
                 }
             });
+            
+            // Marker initial auf Karte laden (über Filter-Funktion)
+            applyFilters();
         }
 
-        // --- FILTER LOGIK (TOOLBOX & ZEITLEISTE) ---
-        function toggleTimeline() {
-            document.getElementById('timeline-container').classList.toggle('active');
+        // --- TOOLBOX MENU & FILTER LOGIK ---
+
+        // Öffnet/Schließt das kleine Dropdown-Menü der Toolbox oben rechts
+        function toggleToolboxMenu() {
+            document.getElementById('toolbox-menu').classList.toggle('active');
         }
 
-        function updateSliderFilter(val) {
-            val = parseInt(val);
-            const mapping = ['all', '1', '2', '3', 'unknown'];
-            const targetCentury = mapping[val];
+        // Öffnet ein dediziertes Tool-Fenster in der Mitte und schließt das Menü
+        function openCenterTool(toolId) {
+            document.getElementById('toolbox-menu').classList.remove('active');
+            
+            // Schließt alle anderen potenziellen Center-Tools (Zukunftssicherheit)
+            document.querySelectorAll('#app-container > div[id$="-container"]').forEach(el => {
+                el.classList.remove('active');
+            });
 
-            // Aktive Labels visuell updaten
+            document.getElementById(toolId).classList.add('active');
+        }
+
+        // Schließt das mittige Tool-Panel
+        function closeCenterTool(toolId) {
+            const el = document.getElementById(toolId);
+            if (el) {
+                el.classList.remove('active');
+            }
+        }
+
+        // Funktion für das Akkordeon-Verhalten innerhalb des Filter-Panels
+        function toggleAccordion(btnElement, contentId) {
+            const content = document.getElementById(contentId);
+            content.classList.toggle('active');
+            btnElement.classList.toggle('active');
+        }
+
+        function applyFilters() {
+            // Werte aller Filter auslesen
+            const searchVal = document.getElementById('search-filter').value.toLowerCase();
+            const provVal = document.getElementById('prov-filter').value;
+            const artVal = document.getElementById('art-filter').value;
+            const titelVal = document.getElementById('titel-filter').value;
+            
+            const sliderVal = parseInt(document.getElementById('century-slider').value);
+            const centuryMapping = ['all', '1', '2', '3', 'unknown'];
+            const centuryVal = centuryMapping[sliderVal];
+
+            // Aktive Zeitleisten-Labels visuell updaten
             const labels = document.getElementById('slider-labels').children;
             for(let i = 0; i < labels.length; i++) {
-                if(i === val) {
-                    labels[i].classList.add('active-label');
-                } else {
-                    labels[i].classList.remove('active-label');
-                }
+                if(i === sliderVal) labels[i].classList.add('active-label');
+                else labels[i].classList.remove('active-label');
             }
 
-            // Geöffnete Sidebars schließen, um Inkonsistenzen zu vermeiden
+            // Geöffnete Sidebars schließen
             closeSidebar();
             closeLightbox();
 
-            allMarkers.forEach(item => {
-                const datierung = item.data.Datierung || "";
-                let show = false;
+            let visibleMarkers = [];
+            currentFilteredData = []; // Reset für die Tabelle
 
-                if (targetCentury === 'all') {
-                    show = true;
-                } else if (targetCentury === 'unknown') {
-                    // "Unbekannt" oder "-" enthalten typischerweise keine Ziffern
-                    if (!datierung.match(/\d/)) show = true;
-                } else {
-                    // Sucht nach der Ziffer des Jahrhunderts im Datierungs-String
-                    if (datierung.includes(targetCentury)) show = true;
+            // Ebenen leeren vor Neuaufbau
+            markersLayer.clearLayers();
+
+            // Evaluierung jedes Datensatzes
+            allMarkers.forEach(item => {
+                const d = item.data;
+                let show = true;
+
+                // 1. Textsuche
+                if (searchVal) {
+                    const searchStr = `${d.Name || ''} ${d.Belegstelle || ''} ${d.Inschriftentext || ''}`.toLowerCase();
+                    if (!searchStr.includes(searchVal)) show = false;
                 }
 
+                // 2. Provinz
+                if (provVal !== 'all') {
+                    if (provVal === 'unknown' && d.Provinz && d.Provinz !== '-') show = false;
+                    else if (provVal !== 'unknown' && d.Provinz !== provVal) show = false;
+                }
+
+                // 3. Inschriftenart
+                if (artVal !== 'all') {
+                    if (artVal === 'unknown' && d.Inschriften_Art && d.Inschriften_Art !== '-') show = false;
+                    else if (artVal !== 'unknown' && d.Inschriften_Art !== artVal) show = false;
+                }
+
+                // 4. Titel
+                if (titelVal !== 'all') {
+                    if (titelVal === 'unknown' && d.Priesterinnentitel && d.Priesterinnentitel !== '-') show = false;
+                    else if (titelVal !== 'unknown' && d.Priesterinnentitel !== titelVal) show = false;
+                }
+
+                // 5. Datierung
+                if (show) { 
+                    const datierung = d.Datierung || "";
+                    if (centuryVal === 'unknown') {
+                        if (datierung.match(/\d/)) show = false;
+                    } else if (centuryVal !== 'all') {
+                        if (!datierung.includes(centuryVal)) show = false;
+                    }
+                }
+
+                // Datenstrukturen updaten
                 if (show) {
-                    if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
-                } else {
-                    if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
+                    visibleMarkers.push(item.marker);
+                    currentFilteredData.push(d); // Für Tabelle speichern
+                    markersLayer.addLayer(item.marker);
                 }
             });
+
+            // Aktive Ebene final auf die Karte setzen
+            if (!map.hasLayer(markersLayer)) {
+                map.addLayer(markersLayer);
+            }
+
+            // Tabelle aktualisieren, falls offen
+            if (isTableViewActive) {
+                renderTable();
+            }
+
+            // Wenn sich der Provinz-Filter geändert hat, Karte neu zentrieren
+            if (provVal !== currentProvinceFilter) {
+                currentProvinceFilter = provVal;
+                
+                // Falls es für die gefilterte Provinz sichtbare Marker gibt
+                if (provVal !== 'all' && visibleMarkers.length > 0) {
+                    const group = new L.featureGroup(visibleMarkers);
+                    map.flyToBounds(group.getBounds(), { padding: [50, 50], maxZoom: 8 });
+                } else if (provVal === 'all') {
+                    // Zurück zur Standard-Ansicht (Gesamtes Reich)
+                    map.flyTo([41.9, 12.5], 5);
+                }
+            }
         }
 
         // Sidebar Logik
         function showDetails(data) {
+            // Geöffnete Tools ausblenden
+            closeCenterTool('filter-container');
+            document.getElementById('toolbox-menu').classList.remove('active');
+            
+            // Toolbox-Wrapper verstecken
+            document.querySelector('.toolbox-wrapper').style.display = 'none';
+
             document.getElementById('sidebar-placeholder').style.display = 'none';
             document.getElementById('sidebar-data').style.display = 'block';
             
@@ -683,6 +1351,7 @@
 
             document.getElementById('detail-name').innerText = data.Name || 'Unbekannt';
             document.getElementById('detail-fundort').innerText = data.Fundort || '-';
+            document.getElementById('detail-provinz').innerText = data.Provinz || '-';
             document.getElementById('detail-datierung').innerText = data.Datierung || 'Unbekannt';
             document.getElementById('detail-titel').innerText = data.Priesterinnentitel || '-';
             document.getElementById('detail-familie').innerText = data.Familie || '-';
@@ -696,7 +1365,6 @@
             const imgElement = document.getElementById('detail-bild');
             const placeholderElement = document.getElementById('bild-platzhalter');
             
-            // Alten Event-Listener zurücksetzen, um Konflikte zu vermeiden
             imgElement.onerror = null;
             
             if (data.Bild && typeof data.Bild === 'string' && data.Bild.trim() !== "") {
@@ -704,7 +1372,6 @@
                 imgElement.style.display = 'block';
                 placeholderElement.style.display = 'none';
 
-                // Fallback: Wenn das Bild nicht geladen werden kann (z.B. falscher Pfad)
                 imgElement.onerror = () => {
                     imgElement.style.display = 'none';
                     placeholderElement.style.display = 'flex';
@@ -722,6 +1389,79 @@
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('sidebar-left').classList.remove('active');
+            
+            // Toolbox-Wrapper wieder einblenden
+            document.querySelector('.toolbox-wrapper').style.display = 'flex';
+        }
+
+        // --- TABELLEN ANSICHT LOGIK ---
+
+        function toggleTableView() {
+            isTableViewActive = !isTableViewActive;
+            const container = document.getElementById('table-view-container');
+            const legend = document.querySelector('.legend-box');
+            document.getElementById('toolbox-menu').classList.remove('active');
+
+            if (isTableViewActive) {
+                container.style.display = 'block';
+                if (legend) legend.style.display = 'none'; // Legende ausblenden
+                closeSidebar();
+                renderTable();
+            } else {
+                container.style.display = 'none';
+                if (legend) legend.style.display = 'block'; // Legende wieder einblenden
+            }
+        }
+
+        function sortTable(columnName) {
+            if (currentSortColumn === columnName) {
+                sortAscending = !sortAscending;
+            } else {
+                currentSortColumn = columnName;
+                sortAscending = true;
+            }
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('data-table-body');
+            tbody.innerHTML = '';
+
+            // Sortier-Indikatoren zurücksetzen
+            const columns = ['Name', 'Priesterinnentitel', 'Provinz', 'Fundort', 'Datierung', 'Belegstelle', 'Inschriftentext'];
+            columns.forEach(col => {
+                document.getElementById(`sort-ind-${col}`).innerText = '';
+            });
+            document.getElementById(`sort-ind-${currentSortColumn}`).innerText = sortAscending ? ' ▲' : ' ▼';
+
+            // Daten sortieren
+            const sortedData = [...currentFilteredData].sort((a, b) => {
+                let valA = (a[currentSortColumn] || '').toLowerCase();
+                let valB = (b[currentSortColumn] || '').toLowerCase();
+                
+                if (valA < valB) return sortAscending ? -1 : 1;
+                if (valA > valB) return sortAscending ? 1 : -1;
+                return 0;
+            });
+
+            // Tabelle befüllen
+            sortedData.forEach(d => {
+                const tr = document.createElement('tr');
+                
+                let shortText = d.Inschriftentext || '-';
+                if (shortText.length > 50) shortText = shortText.substring(0, 50) + '...';
+
+                tr.innerHTML = `
+                    <td>${d.Name || '-'}</td>
+                    <td>${d.Priesterinnentitel || '-'}</td>
+                    <td>${d.Provinz || '-'}</td>
+                    <td>${d.Fundort || '-'}</td>
+                    <td>${d.Datierung || '-'}</td>
+                    <td>${d.Belegstelle || '-'}</td>
+                    <td title="${d.Inschriftentext || ''}">${shortText}</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         // Lightbox Logik
@@ -736,6 +1476,24 @@
         function closeLightbox() {
             const lightbox = document.getElementById('lightbox');
             lightbox.classList.remove('active');
+        }
+
+        // --- TUTORIAL LOGIK ---
+        function openTutorial() {
+            document.getElementById('tutorial-overlay').classList.add('active');
+            // Schließe andere Menüs
+            document.getElementById('toolbox-menu').classList.remove('active');
+            closeCenterTool('filter-container');
+        }
+
+        function closeTutorial() {
+            document.getElementById('tutorial-overlay').classList.remove('active');
+        }
+
+        function closeTutorialOutside(event) {
+            if (event.target.id === 'tutorial-overlay') {
+                closeTutorial();
+            }
         }
     </script>
 </body>
