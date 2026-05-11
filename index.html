@@ -1027,7 +1027,10 @@
 
         // Schließt das mittige Tool-Panel
         function closeCenterTool(toolId) {
-            document.getElementById(toolId).classList.remove('active');
+            const el = document.getElementById(toolId);
+            if (el) {
+                el.classList.remove('active');
+            }
         }
 
         // Funktion für das Akkordeon-Verhalten innerhalb des Filter-Panels
@@ -1141,7 +1144,6 @@
         function showDetails(data) {
             // Geöffnete Tools ausblenden
             closeCenterTool('filter-container');
-            closeCenterTool('gis-container');
             document.getElementById('toolbox-menu').classList.remove('active');
             
             // Toolbox-Wrapper verstecken
