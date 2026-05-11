@@ -332,7 +332,7 @@
             "Familie": "Ehemann: Aurelius Honoratus aus der Tribus Quirina, flamen Augusti perpetuus",
             "Anmerkung": "Ehrungen für Mann und Frau",
             "Literatur": "-",
-            "Bild": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Plaque_with_a_Latin_inscription_commemorating_the_restoration_of_the_Temple_of_Isis_by_the_senator_Tiberius_Julius_Alexander%2C_said_to_be_from_the_time_of_Ptolemy_XII%2C_Capitoline_Museums%2C_Rome_%2823071379564%29.jpg/1200px-Plaque_with_a_Latin_inscription_commemorating_the_restoration_of_the_Temple_of_Isis_by_the_senator_Tiberius_Julius_Alexander%2C_said_to_be_from_the_time_of_Ptolemy_XII%2C_Capitoline_Museums%2C_Rome_%2823071379564%29.jpg" // Beispiel-Bild für Vorschau-Zwecke
+            "Bild": ""
           }
         ];
 
@@ -362,7 +362,8 @@
                         color: "#ffffff", 
                         weight: 2, 
                         opacity: 1, 
-                        fillOpacity: 1 // Hier wurde die Transparenz auf 1 (100%) gesetzt
+                        fillOpacity: 1,
+                        pane: 'markerPane' // Erwingt, dass der Punkt ÜBER den GeoJSON-Flächen liegt
                     }).addTo(map);
 
                     marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
@@ -398,10 +399,19 @@
             const imgElement = document.getElementById('detail-bild');
             const placeholderElement = document.getElementById('bild-platzhalter');
             
+            // Alten Event-Listener zurücksetzen, um Konflikte zu vermeiden
+            imgElement.onerror = null;
+            
             if (data.Bild && typeof data.Bild === 'string' && data.Bild.trim() !== "") {
                 imgElement.src = data.Bild;
                 imgElement.style.display = 'block';
                 placeholderElement.style.display = 'none';
+
+                // Fallback: Wenn das Bild nicht geladen werden kann (z.B. falscher Pfad)
+                imgElement.onerror = () => {
+                    imgElement.style.display = 'none';
+                    placeholderElement.style.display = 'flex';
+                };
             } else {
                 imgElement.src = "";
                 imgElement.style.display = 'none';
