@@ -401,7 +401,71 @@
             color: var(--primary-color);
         }
 
-        /* --- GIS & MESSWERKZEUG STYLING --- */
+        /* --- TABELLEN ANSICHT --- */
+        #table-view-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            z-index: 500; /* Über der Karte, unter den Tool-Modals */
+            display: none;
+            padding: 90px 20px 20px 20px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 0.9rem;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .data-table th {
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            user-select: none;
+        }
+
+        .data-table th:hover {
+            background-color: #6b0000;
+        }
+
+        .data-table tr:hover {
+            background-color: #f9f8f5;
+        }
+
+        .close-table-btn {
+            background: white;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .close-table-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* --- GIS STYLING BEREINIGT --- */
         .gis-btn {
             background-color: white;
             color: var(--primary-color);
@@ -584,7 +648,29 @@
             <div class="toolbox-menu" id="toolbox-menu">
                 <button onclick="openCenterTool('filter-container')">🔍 Suche & Filter</button>
                 <button onclick="openCenterTool('gis-container')">🗺️ Räumliche Analyse</button>
+                <button onclick="toggleTableView()">📊 Tabellen-Ansicht</button>
             </div>
+        </div>
+
+        <!-- TABELLEN-ANSICHT CONTAINER -->
+        <div id="table-view-container">
+            <button class="close-table-btn" onclick="toggleTableView()">✖ Zurück zur Karte</button>
+            <table class="data-table" id="data-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('Name')">Name <span id="sort-ind-Name"></span></th>
+                        <th onclick="sortTable('Priesterinnentitel')">Titel <span id="sort-ind-Priesterinnentitel"></span></th>
+                        <th onclick="sortTable('Provinz')">Provinz <span id="sort-ind-Provinz"></span></th>
+                        <th onclick="sortTable('Fundort')">Fundort <span id="sort-ind-Fundort"></span></th>
+                        <th onclick="sortTable('Datierung')">Datierung <span id="sort-ind-Datierung"></span></th>
+                        <th onclick="sortTable('Belegstelle')">Belegstelle <span id="sort-ind-Belegstelle"></span></th>
+                        <th onclick="sortTable('Inschriftentext')">Textauszug <span id="sort-ind-Inschriftentext"></span></th>
+                    </tr>
+                </thead>
+                <tbody id="data-table-body">
+                    <!-- Wird dynamisch befüllt -->
+                </tbody>
+            </table>
         </div>
 
         <!-- ZENTRALES TOOL-PANEL (öffnet sich nach Auswahl im Toolbox-Menu) -->
@@ -657,13 +743,6 @@
                 <label>Karten-Ansicht (Ebenen):</label>
                 <button class="gis-btn active" id="btn-mode-normal" onclick="setMapMode('normal')">Standard (Einzelne Nadeln)</button>
                 <button class="gis-btn" id="btn-mode-cluster" onclick="setMapMode('cluster')">Clustering (Fasst überlagernde Orte zusammen)</button>
-                <button class="gis-btn" id="btn-mode-heatmap" onclick="setMapMode('heatmap')">Heatmap (Dichtekarte der Funde)</button>
-            </div>
-
-            <div class="filter-group" style="margin-top: 10px;">
-                <label>Messwerkzeug:</label>
-                <button class="gis-btn" id="btn-measure" onclick="toggleMeasurement()">📏 Distanzmessung starten</button>
-                <div id="measure-info" class="measure-info-box"></div>
             </div>
         </div>
 
@@ -727,7 +806,6 @@
     <!-- Plugins laden -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
     <script>
         // DATENBLOCK mit neuem Attribut "Provinz"
@@ -851,11 +929,15 @@
             showCoverageOnHover: false,
             zoomToBoundsOnClick: true
         });
-        
-        let heatmapLayer = L.heatLayer([], { radius: 25, blur: 15, maxZoom: 10 });
 
-        let currentMapMode = 'normal'; // 'normal', 'cluster', 'heatmap'
+        let currentMapMode = 'normal'; // 'normal', 'cluster'
         let currentProvinceFilter = "all"; // State-Tracker für Karten-Zentrierung
+        
+        // Tabellen-State
+        let currentFilteredData = [];
+        let isTableViewActive = false;
+        let currentSortColumn = 'Name';
+        let sortAscending = true;
 
         // Funktion: Dropdowns dynamisch aus Daten füllen
         function populateDropdowns() {
@@ -893,7 +975,7 @@
                         opacity: 1, 
                         fillOpacity: 1,
                         pane: 'markerPane' 
-                    });
+                    }); // .addTo(map) wurde hier entfernt, da applyFilters das nun zentral steuert
 
                     marker.bindTooltip(`<b>${priesterin.Name}</b><br>${priesterin.Fundort}`);
 
@@ -932,11 +1014,6 @@
         // Schließt das mittige Tool-Panel
         function closeCenterTool(toolId) {
             document.getElementById(toolId).classList.remove('active');
-            
-            // Wenn das GIS Tool geschlossen wird, breche eine evtl. laufende Messung ab
-            if(toolId === 'gis-container' && measureState !== 0) {
-                toggleMeasurement();
-            }
         }
 
         // Funktion für das Akkordeon-Verhalten innerhalb des Filter-Panels
@@ -969,14 +1046,11 @@
             closeLightbox();
 
             let visibleMarkers = [];
-            let heatmapPoints = [];
+            currentFilteredData = []; // Reset für die Tabelle
 
             // Ebenen leeren vor Neuaufbau
             normalLayerGroup.clearLayers();
             clusterLayerGroup.clearLayers();
-            if (map.hasLayer(heatmapLayer)) {
-                map.removeLayer(heatmapLayer);
-            }
 
             // Evaluierung jedes Datensatzes
             allMarkers.forEach(item => {
@@ -1020,25 +1094,30 @@
                 // Datenstrukturen updaten je nach Ansichtsmodus
                 if (show) {
                     visibleMarkers.push(item.marker);
+                    currentFilteredData.push(d); // Für Tabelle speichern
                     
                     if (currentMapMode === 'normal') {
                         normalLayerGroup.addLayer(item.marker);
                     } else if (currentMapMode === 'cluster') {
                         clusterLayerGroup.addLayer(item.marker);
-                    } else if (currentMapMode === 'heatmap') {
-                        heatmapPoints.push(item.data.Koordinaten);
                     }
                 }
             });
 
+            // Alte Ebenen von der Karte entfernen
+            if (map.hasLayer(normalLayerGroup)) map.removeLayer(normalLayerGroup);
+            if (map.hasLayer(clusterLayerGroup)) map.removeLayer(clusterLayerGroup);
+
             // Aktive Ebene final auf die Karte setzen
             if (currentMapMode === 'cluster') {
-                if (!map.hasLayer(clusterLayerGroup)) map.addLayer(clusterLayerGroup);
-            } else if (currentMapMode === 'heatmap') {
-                heatmapLayer.setLatLngs(heatmapPoints);
-                if (!map.hasLayer(heatmapLayer)) map.addLayer(heatmapLayer);
+                map.addLayer(clusterLayerGroup);
             } else {
-                if (!map.hasLayer(normalLayerGroup)) map.addLayer(normalLayerGroup);
+                map.addLayer(normalLayerGroup);
+            }
+
+            // Tabelle aktualisieren, falls offen
+            if (isTableViewActive) {
+                renderTable();
             }
 
             // Wenn sich der Provinz-Filter geändert hat, Karte neu zentrieren
@@ -1058,6 +1137,14 @@
 
         // Sidebar Logik
         function showDetails(data) {
+            // Geöffnete Tools ausblenden
+            closeCenterTool('filter-container');
+            closeCenterTool('gis-container');
+            document.getElementById('toolbox-menu').classList.remove('active');
+            
+            // Toolbox-Wrapper verstecken
+            document.querySelector('.toolbox-wrapper').style.display = 'none';
+
             document.getElementById('sidebar-placeholder').style.display = 'none';
             document.getElementById('sidebar-data').style.display = 'block';
             
@@ -1104,6 +1191,9 @@
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('sidebar-left').classList.remove('active');
+            
+            // Toolbox-Wrapper wieder einblenden
+            document.querySelector('.toolbox-wrapper').style.display = 'flex';
         }
 
         // --- GIS & ANALYSE LOGIK ---
@@ -1112,74 +1202,82 @@
             currentMapMode = mode;
             
             // UI Update der Buttons
-            document.querySelectorAll('#gis-container .gis-btn:not(#btn-measure)').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#gis-container .gis-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-mode-' + mode).classList.add('active');
             
             // Wende die bestehenden Filter auf die neue Kartenansicht an
             applyFilters();
         }
 
-        // Messwerkzeug Logik
-        let measureState = 0; // 0 = Inaktiv, 1 = Warte auf Startpunkt, 2 = Warte auf Endpunkt
-        let measurePoints = [];
-        let measureGroup = L.featureGroup().addTo(map);
+        // --- TABELLEN ANSICHT LOGIK ---
 
-        function toggleMeasurement() {
-            const btn = document.getElementById('btn-measure');
-            const info = document.getElementById('measure-info');
-            
-            if (measureState === 0) {
-                // Aktivieren
-                measureState = 1;
-                measurePoints = [];
-                measureGroup.clearLayers();
-                btn.innerHTML = "❌ Messung abbrechen";
-                btn.style.backgroundColor = "#fff";
-                btn.style.color = "var(--text-color)";
-                info.style.display = "block";
-                info.innerText = "Klicke auf der Karte auf den gewünschten Startpunkt.";
-                document.getElementById('map').style.cursor = 'crosshair';
+        function toggleTableView() {
+            isTableViewActive = !isTableViewActive;
+            const container = document.getElementById('table-view-container');
+            const legend = document.querySelector('.legend-box');
+            document.getElementById('toolbox-menu').classList.remove('active');
+
+            if (isTableViewActive) {
+                container.style.display = 'block';
+                if (legend) legend.style.display = 'none'; // Legende ausblenden
+                closeSidebar();
+                renderTable();
             } else {
-                // Deaktivieren / Zurücksetzen
-                measureState = 0;
-                measurePoints = [];
-                measureGroup.clearLayers();
-                btn.innerHTML = "📏 Distanzmessung starten";
-                btn.style.backgroundColor = "white";
-                btn.style.color = "var(--primary-color)";
-                info.style.display = "none";
-                document.getElementById('map').style.cursor = '';
+                container.style.display = 'none';
+                if (legend) legend.style.display = 'block'; // Legende wieder einblenden
             }
         }
 
-        // Interaktion auf der Karte für Messung
-        map.on('click', function(e) {
-            if (measureState === 1) {
-                // Startpunkt gesetzt
-                measurePoints.push(e.latlng);
-                L.circleMarker(e.latlng, { radius: 5, color: '#333', fillColor: '#333', fillOpacity: 1 }).addTo(measureGroup);
-                
-                measureState = 2;
-                document.getElementById('measure-info').innerText = "Startpunkt markiert. Klicke nun auf den Zielort.";
-            } else if (measureState === 2) {
-                // Endpunkt gesetzt
-                measurePoints.push(e.latlng);
-                L.circleMarker(e.latlng, { radius: 5, color: '#333', fillColor: '#333', fillOpacity: 1 }).addTo(measureGroup);
-                
-                // Distanz berechnen (distanceTo gibt Meter zurück)
-                let distanceMeters = measurePoints[0].distanceTo(measurePoints[1]);
-                let distanceKm = (distanceMeters / 1000).toFixed(2);
-                
-                // Linie zeichnen
-                let polyline = L.polyline(measurePoints, { color: '#333', weight: 3, dashArray: '5, 5' }).addTo(measureGroup);
-                polyline.bindTooltip(`${distanceKm} km`, { permanent: true, direction: 'center', className: 'measure-tooltip' }).openTooltip();
-                
-                // Messung abschließen, aber Werkzeug aktiv lassen (für Neustart)
-                measureState = 1; 
-                measurePoints = [];
-                document.getElementById('measure-info').innerHTML = `<b>Ergebnis: ${distanceKm} km.</b><br>Klicke erneut für eine neue Messung.`;
+        function sortTable(columnName) {
+            if (currentSortColumn === columnName) {
+                sortAscending = !sortAscending;
+            } else {
+                currentSortColumn = columnName;
+                sortAscending = true;
             }
-        });
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('data-table-body');
+            tbody.innerHTML = '';
+
+            // Sortier-Indikatoren zurücksetzen
+            const columns = ['Name', 'Priesterinnentitel', 'Provinz', 'Fundort', 'Datierung', 'Belegstelle', 'Inschriftentext'];
+            columns.forEach(col => {
+                document.getElementById(`sort-ind-${col}`).innerText = '';
+            });
+            document.getElementById(`sort-ind-${currentSortColumn}`).innerText = sortAscending ? ' ▲' : ' ▼';
+
+            // Daten sortieren
+            const sortedData = [...currentFilteredData].sort((a, b) => {
+                let valA = (a[currentSortColumn] || '').toLowerCase();
+                let valB = (b[currentSortColumn] || '').toLowerCase();
+                
+                if (valA < valB) return sortAscending ? -1 : 1;
+                if (valA > valB) return sortAscending ? 1 : -1;
+                return 0;
+            });
+
+            // Tabelle befüllen
+            sortedData.forEach(d => {
+                const tr = document.createElement('tr');
+                
+                let shortText = d.Inschriftentext || '-';
+                if (shortText.length > 50) shortText = shortText.substring(0, 50) + '...';
+
+                tr.innerHTML = `
+                    <td>${d.Name || '-'}</td>
+                    <td>${d.Priesterinnentitel || '-'}</td>
+                    <td>${d.Provinz || '-'}</td>
+                    <td>${d.Fundort || '-'}</td>
+                    <td>${d.Datierung || '-'}</td>
+                    <td>${d.Belegstelle || '-'}</td>
+                    <td title="${d.Inschriftentext || ''}">${shortText}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
         // Lightbox Logik
         function openLightbox(src) {
