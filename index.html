@@ -465,6 +465,79 @@
             color: white;
         }
 
+        /* --- TUTORIAL MODAL --- */
+        #tutorial-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #tutorial-overlay.active {
+            display: flex;
+        }
+
+        .tutorial-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 4px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-top: 4px solid var(--primary-color);
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .tutorial-content h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        .tutorial-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tutorial-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .tutorial-section h3 {
+            font-size: 1.05rem;
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tutorial-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .tutorial-close-btn:hover {
+            color: var(--primary-color);
+        }
+
         /* --- AKKORDEON STRUKTUR FÜR TOOLS --- */
         .accordion-btn {
             background-color: var(--bg-color);
@@ -605,7 +678,10 @@
 
         <!-- TOOLBOX (Button & Dropdown Oben Rechts) -->
         <div class="toolbox-wrapper">
-            <button class="toolbox-btn" onclick="toggleToolboxMenu()">⚙️ Toolbox</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="toolbox-btn" onclick="openTutorial()">❓ Anleitung</button>
+                <button class="toolbox-btn" onclick="toggleToolboxMenu()">⚙️ Toolbox</button>
+            </div>
             <div class="toolbox-menu" id="toolbox-menu">
                 <button onclick="openCenterTool('filter-container')">🔍 Suche & Filter</button>
                 <button onclick="toggleTableView()">📊 Tabellen-Ansicht</button>
@@ -746,6 +822,34 @@
         <div id="lightbox" onclick="closeLightbox()">
             <button id="lightbox-close">&times;</button>
             <img id="lightbox-img" src="" alt="Vergrößertes Epigraph">
+        </div>
+
+        <!-- TUTORIAL OVERLAY -->
+        <div id="tutorial-overlay" onclick="closeTutorialOutside(event)">
+            <div class="tutorial-content">
+                <button class="tutorial-close-btn" onclick="closeTutorial()">&times;</button>
+                <h2>Kurzanleitung: KaiPries Web-App</h2>
+                
+                <div class="tutorial-section">
+                    <h3>📍 1. Interaktive Karte & Stecknadeln</h3>
+                    <p>Die Karte zeigt die antiken Fundorte der epigraphischen Belege. Ein Klick auf eine rote Stecknadel öffnet die dazugehörigen Forschungsdaten. <br><i>Hinweis:</i> Stammen mehrere Inschriften vom exakt selben Fundort, werden die Nadeln optisch leicht versetzt dargestellt, damit sie einzeln anwählbar bleiben.</p>
+                </div>
+
+                <div class="tutorial-section">
+                    <h3>📖 2. Epigraphische Detailansicht</h3>
+                    <p>Sobald eine Stecknadel angewählt wird, öffnen sich zwei Seitenleisten. Die <b>linke Leiste</b> zeigt Abbildungen und die Literatur-Belegstelle. Die <b>rechte Leiste</b> enthält die Transkription des Inschriftentextes, Datierungen und prosopographische Notizen.</p>
+                </div>
+
+                <div class="tutorial-section">
+                    <h3>⚙️ 3. Toolbox & Filter</h3>
+                    <p>Über das Dropdown-Menü <i>Toolbox</i> rechts oben erreichst du die Filter. Hier kannst du eine Volltextsuche durchführen oder die Datenlage nach Provinzen, Inschriftenart, Priesterinnentitel und Jahrhundert eingrenzen. Alle Filter sind miteinander kombinierbar. Die Karte passt sich in Echtzeit an und zentriert sich automatisch auf die ausgewählte Region.</p>
+                </div>
+
+                <div class="tutorial-section">
+                    <h3>📊 4. Tabellen-Ansicht</h3>
+                    <p>Ebenfalls über die Toolbox aufrufbar. Diese Ansicht blendet die Karte aus und stellt alle aktuell gefilterten Datensätze in einer Übersicht dar. Ein Klick auf die jeweiligen Spaltenüberschriften sortiert die Daten alphabetisch auf- oder absteigend.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1372,6 +1476,24 @@
         function closeLightbox() {
             const lightbox = document.getElementById('lightbox');
             lightbox.classList.remove('active');
+        }
+
+        // --- TUTORIAL LOGIK ---
+        function openTutorial() {
+            document.getElementById('tutorial-overlay').classList.add('active');
+            // Schließe andere Menüs
+            document.getElementById('toolbox-menu').classList.remove('active');
+            closeCenterTool('filter-container');
+        }
+
+        function closeTutorial() {
+            document.getElementById('tutorial-overlay').classList.remove('active');
+        }
+
+        function closeTutorialOutside(event) {
+            if (event.target.id === 'tutorial-overlay') {
+                closeTutorial();
+            }
         }
     </script>
 </body>
