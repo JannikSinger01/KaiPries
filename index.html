@@ -246,6 +246,118 @@
             text-align: center; 
             margin-top: 50px;
         }
+
+        /* --- LEGENDE --- */
+        .legend-box {
+            position: absolute;
+            bottom: 20px; 
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 999; /* Unter der Sidebar */
+        }
+
+        .legend-box h3 {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-dot {
+            width: 12px; 
+            height: 12px; 
+            background: var(--primary-color);
+            border: 2px solid white; 
+            border-radius: 50%; 
+            margin-right: 10px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
+        }
+
+        .legend-line {
+            width: 16px; 
+            height: 3px; 
+            background: var(--primary-color);
+            opacity: 0.5; 
+            margin-right: 10px;
+        }
+
+        /* --- TOOLBOX & ZEITLEISTE --- */
+        .toolbox {
+            position: absolute;
+            top: 20px; 
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 999;
+        }
+
+        .toolbox button {
+            background: var(--bg-color);
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-color);
+            transition: background 0.2s;
+        }
+
+        .toolbox button:hover {
+            background: #e2dfd8;
+        }
+
+        #timeline-container {
+            position: absolute;
+            top: 90px; /* Direkt unter der KaiPries Kachel */
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none; /* Initial versteckt */
+            gap: 8px;
+            align-items: center;
+        }
+
+        #timeline-container.active {
+            display: flex;
+        }
+
+        .timeline-btn {
+            background: white;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .timeline-btn.active, .timeline-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -257,6 +369,34 @@
         </div>
 
         <div id="map"></div>
+
+        <!-- LEGENDE -->
+        <div class="legend-box">
+            <h3>Legende</h3>
+            <div class="legend-item">
+                <div class="legend-line"></div>
+                <span>Grenzen des Römischen Reichs (117 n. Chr.)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot"></div>
+                <span>Fundort Epigraph (Kaiserpriesterin)</span>
+            </div>
+        </div>
+
+        <!-- TOOLBOX OBERHALB -->
+        <div class="toolbox">
+            <button onclick="toggleTimeline()">⚙️ Filter / Tools</button>
+        </div>
+
+        <!-- ZEITLEISTE UNTERHALB DER TITEL-BOX -->
+        <div id="timeline-container">
+            <span style="font-size: 0.85rem; font-weight: bold; margin-right: 5px;">Datierung:</span>
+            <button class="timeline-btn active" onclick="filterByCentury('all', this)">Alle</button>
+            <button class="timeline-btn" onclick="filterByCentury('1', this)">1. Jh.</button>
+            <button class="timeline-btn" onclick="filterByCentury('2', this)">2. Jh.</button>
+            <button class="timeline-btn" onclick="filterByCentury('3', this)">3. Jh.</button>
+            <button class="timeline-btn" onclick="filterByCentury('unknown', this)">Unbekannt</button>
+        </div>
 
         <!-- LINKE SIDEBAR (Bild & Belegstelle) -->
         <div id="sidebar-left">
@@ -380,6 +520,9 @@
                 if(data) L.geoJSON(data, { style: { color: "#8b0000", weight: 1.5, fillColor: "#e6e1d1", fillOpacity: 0.4 } }).addTo(map);
             }).catch(e => console.log("AWMC GeoJSON blockiert in Vorschau-Umgebung."));
 
+        // Globales Array für Marker-Verwaltung (Zeitleisten-Filter)
+        const allMarkers = [];
+
         // Marker setzen
         if (typeof priesterinnenData !== 'undefined') {
             priesterinnenData.forEach(priesterin => {
@@ -400,6 +543,45 @@
                         try { showDetails(priesterin); } 
                         catch (e) { console.error("Fehler bei Anzeige:", e); }
                     });
+
+                    // Marker im Array speichern für spätere Filterung
+                    allMarkers.push({ marker: marker, data: priesterin });
+                }
+            });
+        }
+
+        // --- FILTER LOGIK (TOOLBOX & ZEITLEISTE) ---
+        function toggleTimeline() {
+            document.getElementById('timeline-container').classList.toggle('active');
+        }
+
+        function filterByCentury(century, btnElement) {
+            // Aktive Buttons visuell updaten
+            document.querySelectorAll('.timeline-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            // Geöffnete Sidebars schließen, um Inkonsistenzen zu vermeiden
+            closeSidebar();
+            closeLightbox();
+
+            allMarkers.forEach(item => {
+                const datierung = item.data.Datierung || "";
+                let show = false;
+
+                if (century === 'all') {
+                    show = true;
+                } else if (century === 'unknown') {
+                    // "Unbekannt" oder "-" enthalten typischerweise keine Ziffern
+                    if (!datierung.match(/\d/)) show = true;
+                } else {
+                    // Sucht nach der Ziffer des Jahrhunderts im Datierungs-String
+                    if (datierung.includes(century)) show = true;
+                }
+
+                if (show) {
+                    if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
+                } else {
+                    if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
                 }
             });
         }
