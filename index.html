@@ -394,6 +394,12 @@
             margin-bottom: 5px;
             border-bottom: 2px solid var(--primary-color);
             padding-bottom: 10px;
+            cursor: grab; /* Aktiviert den Drag-Mauszeiger */
+            user-select: none; /* Verhindert, dass der Text beim Ziehen markiert wird */
+        }
+
+        .tool-header:active {
+            cursor: grabbing; /* Mauszeiger beim aktiven Ziehen */
         }
 
         .tool-header h3 {
@@ -1495,6 +1501,61 @@
                 closeTutorial();
             }
         }
+
+        // --- DRAG & DROP LOGIK FÜR TOOL-PANEL ---
+        const filterContainer = document.getElementById('filter-container');
+        const toolHeader = filterContainer.querySelector('.tool-header');
+
+        let isDragging = false;
+        let dragStartX, dragStartY;
+        let initialLeft, initialTop;
+
+        toolHeader.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            // Drag abbrechen, wenn der Schließen-Button ("X") geklickt wird
+            if (e.target.closest('.close-btn')) return;
+
+            isDragging = true;
+
+            // Aktuelle, visuelle Position im Browser-Fenster ermitteln (inklusive CSS-Transformationen)
+            const rect = filterContainer.getBoundingClientRect();
+
+            // Zentrierung auflösen und Kachel an exakt der gemessenen Stelle in Pixeln "festnageln"
+            filterContainer.style.transform = 'none';
+            filterContainer.style.left = rect.left + 'px';
+            filterContainer.style.top = rect.top + 'px';
+
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            
+            // Ab jetzt rechnen wir mit den festgenagelten Werten weiter
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            // Verhindert, dass während des Ziehens versehentlich Text markiert wird
+            document.body.style.userSelect = 'none';
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+
+            // Berechnung der Verschiebung (Delta)
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+
+            // Neue Position zuweisen
+            filterContainer.style.left = (initialLeft + dx) + 'px';
+            filterContainer.style.top = (initialTop + dy) + 'px';
+        }
+
+        function dragEnd() {
+            isDragging = false;
+            document.body.style.userSelect = '';
+        }
+
     </script>
 </body>
 </html>
